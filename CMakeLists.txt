@@ -3,4 +3,4 @@ project(TinySynC__)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(TinySynC__ main.cpp node.cpp node.h minisync.cpp minisync.h)
+add_executable(TinySynC__ main.cpp minisync.cpp minisync.h)
