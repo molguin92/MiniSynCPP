@@ -7,7 +7,7 @@
 
 #include "minisync.h"
 
-MiniSync::SyncAlgorithm::SyncAlgorithm(): currentDrift(1.0), currentOffset(0.0)
+MiniSync::SyncAlgorithm::SyncAlgorithm() : currentDrift(1.0), currentOffset(0)
 {}
 
 float MiniSync::SyncAlgorithm::getDrift()
@@ -15,9 +15,21 @@ float MiniSync::SyncAlgorithm::getDrift()
     return this->currentDrift;
 }
 
-float MiniSync::SyncAlgorithm::getOffset()
+std::chrono::nanoseconds MiniSync::SyncAlgorithm::getOffset()
 {
     return this->currentOffset;
 }
+
+MiniSync::sys_nanoseconds MiniSync::SyncAlgorithm::getCurrentTimeNanoseconds()
+{
+    sys_nanoseconds now = std::chrono::system_clock::now();
+
+    uint64_t
+    n_now = static_cast<uint64_t>(now.time_since_epoch().count() * this->currentDrift) + this->currentOffset.count();
+
+    return sys_time<std::chrono::nanoseconds>(std::chrono::nanoseconds(n_now));
+}
+
+
 
 

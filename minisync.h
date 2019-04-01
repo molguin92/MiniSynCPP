@@ -8,36 +8,44 @@
 #ifndef TINYSYNC___MINISYNC_H
 #define TINYSYNC___MINISYNC_H
 
-# include <ctime>
+# include <chrono>
 
-namespace MiniSync {
-    struct DataPoint {
+namespace MiniSync
+{
+    template<class Duration>
+    using sys_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
+    using sys_nanoseconds = sys_time<std::chrono::nanoseconds>;
+
+    struct DataPoint
+    {
     public:
-        time_t t_o;
-        time_t t_br;
-        time_t t_bt;
-        time_t t_r;
+        sys_nanoseconds t_o;
+        sys_nanoseconds t_br;
+        sys_nanoseconds t_bt;
+        sys_nanoseconds t_r;
     };
 
     class SyncAlgorithm
     {
     protected:
-        float currentDrift;
-        float currentOffset;
+        float currentDrift; // relative drift of the clock
+        std::chrono::nanoseconds currentOffset; // current offset in nanoseconds
         SyncAlgorithm();
     public:
-        virtual void addDataPoint(time_t t_o, time_t t_br, time_t t_bt, time_t t_r) = 0;
+        virtual void
+        addDataPoint(sys_nanoseconds t_o, sys_nanoseconds t_br, sys_nanoseconds t_bt, sys_nanoseconds t_r) = 0;
         float getDrift();
-        float getOffset();
-        time_t getCurrentTime();
+        std::chrono::nanoseconds getOffset();
+        sys_nanoseconds getCurrentTimeNanoseconds();
     };
 
-    class TinySyncAlgorithm: public SyncAlgorithm
+    class TinySyncAlgorithm : public SyncAlgorithm
     {
     };
 
-    class MiniSyncAlgorithm: public SyncAlgorithm
-    {};
+    class MiniSyncAlgorithm : public SyncAlgorithm
+    {
+    };
 }
 
 
