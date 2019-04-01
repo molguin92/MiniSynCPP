@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.13)
-project(TinySynC__)
+project(MiniSynCPP)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(TinySynC__ main.cpp minisync.cpp minisync.h)
+add_executable(MiniSynCPP main.cpp minisync.cpp minisync.h)
