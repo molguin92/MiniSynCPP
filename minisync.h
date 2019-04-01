@@ -12,39 +12,73 @@
 
 namespace MiniSync
 {
-    template<class Duration>
-    using sys_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
+    template<class Duration> using sys_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
     using sys_nanoseconds = sys_time<std::chrono::nanoseconds>;
 
-    struct DataPoint
+    typedef struct
     {
-    public:
-        sys_nanoseconds t_o;
-        sys_nanoseconds t_br;
-        sys_nanoseconds t_bt;
-        sys_nanoseconds t_r;
-    };
+        uint64_t to;
+        uint64_t tb;
+        uint64_t tr;
+    } DataPoint;
 
     class SyncAlgorithm
     {
     protected:
-        float currentDrift; // relative drift of the clock
-        std::chrono::nanoseconds currentOffset; // current offset in nanoseconds
-        SyncAlgorithm();
+        // constraints
+        DataPoint* ldp;
+        DataPoint* rdp;
+
+        long double currentDrift; // relative drift of the clock
+        uint64_t currentOffset; // current offset in nanoseconds
+
+        long double currentDriftError;
+        long double currentOffsetError;
+
+        SyncAlgorithm() :
+        currentDrift(1.0),
+        currentOffset(0),
+        currentDriftError(0.0),
+        currentOffsetError(0.0),
+        ldp(nullptr),
+        rdp(nullptr)
+        {};
+
+        void updateEstimate();
     public:
-        virtual void
-        addDataPoint(sys_nanoseconds t_o, sys_nanoseconds t_br, sys_nanoseconds t_bt, sys_nanoseconds t_r) = 0;
+        /*
+         * Add a new DataPoint and recalculate offset and drift.
+         */
+        virtual void addDataPoint(uint64_t t_o, uint64_t t_b, uint64_t t_r) = 0;
+
+        /*
+         * Get the current estimated relative clock drift.
+         */
         float getDrift();
-        std::chrono::nanoseconds getOffset();
-        sys_nanoseconds getCurrentTimeNanoseconds();
+
+        /*
+         * Get the current estimated relative clock offset in nanoseconds.
+         */
+        uint64_t getOffsetNanoSeconds();
+
+        /*
+         * Get the current POSIX timestamp in nanoseconds corrected using the estimated relative clock drift and offset.
+         */
+        uint64_t getCurrentTimeNanoSeconds();
     };
 
     class TinySyncAlgorithm : public SyncAlgorithm
     {
+    public:
+        TinySyncAlgorithm() = default;
+        void addDataPoint(uint64_t t_o, uint64_t t_b, uint64_t t_r) override;
     };
 
     class MiniSyncAlgorithm : public SyncAlgorithm
     {
+    public:
+        MiniSyncAlgorithm() = default;
+        void addDataPoint(uint64_t t_o, uint64_t t_b, uint64_t t_r) override;
     };
 }
 
