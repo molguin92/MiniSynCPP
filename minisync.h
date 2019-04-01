@@ -16,6 +16,7 @@ namespace MiniSync
 {
     template<class Duration> using sys_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
     using sys_nanoseconds = sys_time<std::chrono::nanoseconds>;
+    using point = std::pair<std::uint64_t, uint64_t>;
 
     class Exception : public std::exception
     {
@@ -42,8 +43,8 @@ namespace MiniSync
         long double currentDriftError;
         long double currentOffsetError;
 
-        std::pair<long double, long double> current_A;
-        std::pair<long double, long double> current_B;
+        std::pair<long double, long double> current_L1;
+        std::pair<long double, long double> current_L2;
 
         uint32_t processed_timestamps;
 
@@ -56,25 +57,20 @@ namespace MiniSync
         low_2(0, 0),
         high_1(0, 0),
         high_2(0, 0),
-        current_A(0, 0),
-        current_B(0, 0),
+        current_L1(0, 0),
+        current_L2(0, 0),
         processed_timestamps(0)
         {};
 
         /*
          * Subclasses need to override this function with their own drift and offset estimation implementation.
          */
-        virtual void __recalculateEstimates(std::pair<uint64_t, uint64_t>& n_low,
-                                            std::pair<uint64_t, uint64_t>& n_high) = 0;
+        virtual void __recalculateEstimates(point& n_low, point& n_high) = 0;
 
         /*
-         * Calculates the bounds for A and B given two DataPoints
+         * Returns (M, C) for MX + C = Y the line that intersects points p1 and p2.
          */
-        static std::pair<std::pair<long double, long double>, std::pair<long double, long double>>
-        calculateBounds(std::pair<uint64_t, uint64_t>& low1,
-                        std::pair<uint64_t, uint64_t>& high1,
-                        std::pair<uint64_t, uint64_t>& low2,
-                        std::pair<uint64_t, uint64_t>& high2);
+        static std::pair<long double, long double> intersectLine(point p1, point p2);
     public:
         /*
          * Add a new DataPoint and recalculate offset and drift.
@@ -102,8 +98,7 @@ namespace MiniSync
     public:
         TinySyncAlgorithm() = default;
     private:
-        void __recalculateEstimates(std::pair<uint64_t, uint64_t>& n_low,
-                                    std::pair<uint64_t, uint64_t>& n_high) override;
+        void __recalculateEstimates(point& n_low, point& n_high) override;
     };
 
     class MiniSyncAlgorithm : public SyncAlgorithm
@@ -111,8 +106,7 @@ namespace MiniSync
     public:
         MiniSyncAlgorithm() = default;
     private:
-        void __recalculateEstimates(std::pair<uint64_t, uint64_t>& n_low,
-                                    std::pair<uint64_t, uint64_t>& n_high) override;
+        void __recalculateEstimates(point& n_low, point& n_high) override;
     };
 }
 
