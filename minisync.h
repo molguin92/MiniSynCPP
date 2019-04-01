@@ -9,47 +9,77 @@
 #define TINYSYNC___MINISYNC_H
 
 # include <chrono>
+# include <tuple>
+# include <exception>
 
 namespace MiniSync
 {
     template<class Duration> using sys_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
     using sys_nanoseconds = sys_time<std::chrono::nanoseconds>;
 
-    typedef struct
+    class Exception : public std::exception
     {
-        uint64_t to;
-        uint64_t tb;
-        uint64_t tr;
-    } DataPoint;
+    public:
+        const char* what() const noexcept final
+        {
+            return "Error in time synchronization, got invalid timestamp!";
+        }
+    };
 
     class SyncAlgorithm
     {
     protected:
         // constraints
-        DataPoint* ldp;
-        DataPoint* rdp;
+        std::pair<uint64_t, uint64_t> low_1;
+        std::pair<uint64_t, uint64_t> low_2;
+        std::pair<uint64_t, uint64_t> high_1;
+        std::pair<uint64_t, uint64_t> high_2;
+
 
         long double currentDrift; // relative drift of the clock
-        uint64_t currentOffset; // current offset in nanoseconds
+        int64_t currentOffset; // current offset in nanoseconds
 
         long double currentDriftError;
         long double currentOffsetError;
+
+        std::pair<long double, long double> current_A;
+        std::pair<long double, long double> current_B;
+
+        uint32_t processed_timestamps;
 
         SyncAlgorithm() :
         currentDrift(1.0),
         currentOffset(0),
         currentDriftError(0.0),
         currentOffsetError(0.0),
-        ldp(nullptr),
-        rdp(nullptr)
+        low_1(0, 0),
+        low_2(0, 0),
+        high_1(0, 0),
+        high_2(0, 0),
+        current_A(0, 0),
+        current_B(0, 0),
+        processed_timestamps(0)
         {};
 
-        void updateEstimate();
+        /*
+         * Subclasses need to override this function with their own drift and offset estimation implementation.
+         */
+        virtual void __recalculateEstimates(std::pair<uint64_t, uint64_t>& n_low,
+                                            std::pair<uint64_t, uint64_t>& n_high) = 0;
+
+        /*
+         * Calculates the bounds for A and B given two DataPoints
+         */
+        static std::pair<std::pair<long double, long double>, std::pair<long double, long double>>
+        calculateBounds(std::pair<uint64_t, uint64_t>& low1,
+                        std::pair<uint64_t, uint64_t>& high1,
+                        std::pair<uint64_t, uint64_t>& low2,
+                        std::pair<uint64_t, uint64_t>& high2);
     public:
         /*
          * Add a new DataPoint and recalculate offset and drift.
          */
-        virtual void addDataPoint(uint64_t t_o, uint64_t t_b, uint64_t t_r) = 0;
+        void addDataPoint(int64_t t_o, int64_t t_b, int64_t t_r);
 
         /*
          * Get the current estimated relative clock drift.
@@ -59,7 +89,7 @@ namespace MiniSync
         /*
          * Get the current estimated relative clock offset in nanoseconds.
          */
-        uint64_t getOffsetNanoSeconds();
+        int64_t getOffsetNanoSeconds();
 
         /*
          * Get the current POSIX timestamp in nanoseconds corrected using the estimated relative clock drift and offset.
@@ -71,14 +101,18 @@ namespace MiniSync
     {
     public:
         TinySyncAlgorithm() = default;
-        void addDataPoint(uint64_t t_o, uint64_t t_b, uint64_t t_r) override;
+    private:
+        void __recalculateEstimates(std::pair<uint64_t, uint64_t>& n_low,
+                                    std::pair<uint64_t, uint64_t>& n_high) override;
     };
 
     class MiniSyncAlgorithm : public SyncAlgorithm
     {
     public:
         MiniSyncAlgorithm() = default;
-        void addDataPoint(uint64_t t_o, uint64_t t_b, uint64_t t_r) override;
+    private:
+        void __recalculateEstimates(std::pair<uint64_t, uint64_t>& n_low,
+                                    std::pair<uint64_t, uint64_t>& n_high) override;
     };
 }
 
