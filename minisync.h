@@ -1,6 +1,9 @@
-//
-// Created by molguin on 2019-03-29.
-//
+/*
+* Author: Manuel Olguín Muñoz <manuel@olguin.se>
+*
+* Copyright© Manuel Olguín Muñoz 2019
+* See LICENSE file included in the root directory of this project for licensing and copyright details.
+*/
 
 #ifndef TINYSYNC___MINISYNC_H
 #define TINYSYNC___MINISYNC_H
