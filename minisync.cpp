@@ -10,19 +10,19 @@
 
 float MiniSync::SyncAlgorithm::getDrift()
 {
-    return this->currentDrift;
+    return this->currentDrift.value;
 }
 
 int64_t MiniSync::SyncAlgorithm::getOffsetNanoSeconds()
 {
-    return this->currentOffset;
+    return this->currentOffset.value;
 }
 
 uint64_t MiniSync::SyncAlgorithm::getCurrentTimeNanoSeconds()
 {
     auto t_now = std::chrono::system_clock::now().time_since_epoch();
     uint64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(t_now).count();
-    return static_cast<uint64_t>(now * this->currentDrift) + this->currentOffset;
+    return static_cast<uint64_t>(now * this->currentDrift.value) + this->currentOffset.value;
 }
 
 void MiniSync::SyncAlgorithm::addDataPoint(int64_t t_o, int64_t t_b, int64_t t_r)
@@ -30,49 +30,47 @@ void MiniSync::SyncAlgorithm::addDataPoint(int64_t t_o, int64_t t_b, int64_t t_r
     if (processed_timestamps == 0)
     {
         // first sample
-        this->low_1 = std::make_pair(t_b, t_o);
-        this->high_1 = std::make_pair(t_b, t_r);
+        this->init_low = new Point(t_b, t_o);
+        this->init_high = new Point(t_b, t_r);
         this->processed_timestamps++;
     }
     else if (processed_timestamps == 1)
     {
         // second sample
-        this->low_2 = std::make_pair(t_b, t_o);
-        this->high_2 = std::make_pair(t_b, t_r);
+        // now we can create the lines
+        this->low2high = new ConstraintLine(*this->init_low, Point(t_b, t_r));
+        this->high2low = new ConstraintLine(*this->init_high, Point(t_b, t_o));
         this->processed_timestamps++;
 
-        // now we have two DataPoints, estimate...
-        auto L1 = MiniSync::SyncAlgorithm::intersectLine(this->low_1, this->high_2);
-        auto L2 = MiniSync::SyncAlgorithm::intersectLine(this->low_2, this->high_1);
+        long double A_upper = this->low2high->getA();
+        long double B_lower = this->low2high->getB();
+        long double A_lower = this->high2low->getA();
+        long double B_upper = this->high2low->getB();
 
-        // none of the slopes can be negative
-        if (L1.first < 0 || L2.first < 0) throw MiniSync::Exception();
+        this->diff_factor = (A_upper - A_lower) * (B_upper - B_lower);
 
-        this->current_L1 = L1;
-        this->current_L2 = L2;
-
-        this->currentDrift = (this->current_L2.first + this->current_L1.first) / 2;
-        this->currentOffset = static_cast<uint64_t>((this->current_L2.second + this->current_L1.second) / 2);
-        this->currentDriftError = (this->current_L2.first - this->current_L1.first) / 2;
-        this->currentOffsetError = (this->current_L2.second - this->current_L1.second) / 2;
+        this->currentDrift.value = (A_lower + A_upper) / 2;
+        this->currentOffset.value = static_cast<uint64_t>((B_lower + B_upper) / 2);
+        this->currentDrift.error = (A_upper - A_lower) / 2;
+        this->currentOffset.error = (B_upper - B_lower) / 2;
     }
     else
     {
         // n_th sample, n > 2
         // pass it on to the specific algorithm
-        std::pair<uint64_t, uint64_t> n_low = std::make_pair(t_b, t_o);
-        std::pair<uint64_t, uint64_t> n_high = std::make_pair(t_b, t_r);
-
+        auto n_low = Point(t_b, t_o);
+        auto n_high = Point(t_b, t_r);
         this->__recalculateEstimates(n_low, n_high);
     }
 
 }
 
-std::pair<long double, long double> MiniSync::SyncAlgorithm::intersectLine(MiniSync::point p1, MiniSync::point p2)
+MiniSync::SyncAlgorithm::~SyncAlgorithm()
 {
-    long double M = static_cast<long double>(p1.second - p2.second) / (p1.first - p2.first);
-    long double C = p1.second - (M * p1.first);
-    return std::make_pair(M, C);
+    delete (this->init_high);
+    delete (this->init_low);
+    delete (this->high2low);
+    delete (this->low2high);
 }
 
 /*
@@ -100,8 +98,72 @@ std::pair<long double, long double> MiniSync::SyncAlgorithm::intersectLine(MiniS
  * Drift_Error = (A_upper - A_lower)/2
  * Offset_Error = (B_upper - B_lower)/2
  */
-void MiniSync::TinySyncAlgorithm::__recalculateEstimates(point& n_low, point& n_high)
+void MiniSync::TinySyncAlgorithm::__recalculateEstimates(Point& n_low, Point& n_high)
 {
+    // assume timestamps come in time order
+    //
     // find the tightest bound
+    // only need to compare the lines
+    // l1 -> h2 (already have)
+    // l2 -> h1 (already have)
+    // l1 -> n_h
+    // l2 -> n_h
+    // n_l -> h1
+    // n_l -> h2
+    //
+    // find minimum (a_upper - a_lower)(b_upper - b_lower)
 
+    // lower lines (a_upper * x + b_lower)
+    auto* lower_1 = new ConstraintLine(this->low2high->p1, n_high);
+    auto* lower_2 = new ConstraintLine(this->high2low->p2, n_high);
+
+    // upper lines (a_lower * x + b_upper)
+    auto* upper_1 = new ConstraintLine(this->high2low->p1, n_low);
+    auto* upper_2 = new ConstraintLine(this->low2high->p2, n_low);
+
+    ConstraintLine* new_upper = this->high2low;
+    ConstraintLine* new_lower = this->low2high;
+    double new_diff = this->diff_factor;
+
+    for (auto* lower: {this->low2high, lower_1, lower_2})
+    {
+        for (auto* upper: {this->high2low, upper_1, upper_2})
+        {
+            if (lower == this->low2high && upper == this->high2low) continue;
+
+            auto d = (lower->getA() - upper->getA()) * (upper->getB() - lower->getB());
+            if (d < new_diff)
+            {
+                new_diff = d;
+                new_upper = upper;
+                new_lower = lower;
+            }
+        }
+    }
+
+    // cleanup
+    for (auto* constraint: {this->low2high, this->high2low, lower_1, lower_2, upper_1, upper_2})
+    {
+        if (constraint == new_lower || constraint == new_upper) continue;
+        delete (constraint);
+    }
+
+    this->low2high = new_lower;
+    this->high2low = new_upper;
+    this->diff_factor = new_diff;
+
+    this->currentDrift.value = (new_lower->getA() + new_upper->getA()) / 2;
+    this->currentOffset.value = static_cast<uint64_t>((new_lower->getB() + new_upper->getB()) / 2);
+    this->currentDrift.error = (new_lower->getA() - new_upper->getA()) / 2;
+    this->currentOffset.error = (new_upper->getB() - new_lower->getB()) / 2;
+}
+
+MiniSync::ConstraintLine::ConstraintLine(const Point& p1, const Point& p2) : p1(p1), p2(p2)
+{
+    this->A = static_cast<long double>(p1.y - p2.y) / (p1.x - p2.x);
+
+    // slope can't be negative
+    if (this->A < 0) throw MiniSync::Exception();
+
+    this->B = p1.y - (this->A * p1.x);
 }

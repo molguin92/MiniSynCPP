@@ -16,7 +16,6 @@ namespace MiniSync
 {
     template<class Duration> using sys_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
     using sys_nanoseconds = sys_time<std::chrono::nanoseconds>;
-    using point = std::pair<std::uint64_t, uint64_t>;
 
     class Exception : public std::exception
     {
@@ -27,50 +26,76 @@ namespace MiniSync
         }
     };
 
+    class Point
+    {
+    public:
+        const uint64_t x;
+        const uint64_t y;
+        Point() = delete;
+
+        Point(uint64_t x, uint64_t y) : x(x), y(y)
+        {};
+
+        Point(const Point& o) = default;
+    };
+
+    class ConstraintLine
+    {
+    private:
+        long double A;
+        long double B;
+    public:
+        ConstraintLine() = delete;
+        ConstraintLine(const Point& p1, const Point& p2);
+
+        long double getA()
+        { return this->A; }
+
+        long double getB()
+        { return this->B; }
+
+        const Point p1;
+        const Point p2;
+    };
+
     class SyncAlgorithm
     {
     protected:
         // constraints
-        std::pair<uint64_t, uint64_t> low_1;
-        std::pair<uint64_t, uint64_t> low_2;
-        std::pair<uint64_t, uint64_t> high_1;
-        std::pair<uint64_t, uint64_t> high_2;
+        ConstraintLine* low2high;
+        ConstraintLine* high2low;
 
+        Point* init_low;
+        Point* init_high;
 
-        long double currentDrift; // relative drift of the clock
-        int64_t currentOffset; // current offset in nanoseconds
+        struct
+        {
+            long double value = 0;
+            long double error = 0;
+        } currentDrift; // relative drift of the clock
 
-        long double currentDriftError;
-        long double currentOffsetError;
+        struct
+        {
+            int64_t value = 0;
+            long double error = 0;
+        } currentOffset; // current offset in nanoseconds
 
-        std::pair<long double, long double> current_L1;
-        std::pair<long double, long double> current_L2;
-
+        double diff_factor; // difference between current lines
         uint32_t processed_timestamps;
 
         SyncAlgorithm() :
-        currentDrift(1.0),
-        currentOffset(0),
-        currentDriftError(0.0),
-        currentOffsetError(0.0),
-        low_1(0, 0),
-        low_2(0, 0),
-        high_1(0, 0),
-        high_2(0, 0),
-        current_L1(0, 0),
-        current_L2(0, 0),
-        processed_timestamps(0)
+        init_low(nullptr),
+        init_high(nullptr),
+        low2high(nullptr),
+        high2low(nullptr),
+        processed_timestamps(0),
+        diff_factor(0)
         {};
 
         /*
          * Subclasses need to override this function with their own drift and offset estimation implementation.
          */
-        virtual void __recalculateEstimates(point& n_low, point& n_high) = 0;
-
-        /*
-         * Returns (M, C) for MX + C = Y the line that intersects points p1 and p2.
-         */
-        static std::pair<long double, long double> intersectLine(point p1, point p2);
+        virtual void __recalculateEstimates(Point& n_low, Point& n_high) = 0;
     public:
         /*
          * Add a new DataPoint and recalculate offset and drift.
@@ -91,6 +116,8 @@ namespace MiniSync
          * Get the current POSIX timestamp in nanoseconds corrected using the estimated relative clock drift and offset.
          */
         uint64_t getCurrentTimeNanoSeconds();
+
+        ~SyncAlgorithm();
     };
 
     class TinySyncAlgorithm : public SyncAlgorithm
@@ -98,7 +125,7 @@ namespace MiniSync
     public:
         TinySyncAlgorithm() = default;
     private:
-        void __recalculateEstimates(point& n_low, point& n_high) override;
+        void __recalculateEstimates(Point& n_low, Point& n_high) override;
     };
 
     class MiniSyncAlgorithm : public SyncAlgorithm
@@ -106,7 +133,7 @@ namespace MiniSync
     public:
         MiniSyncAlgorithm() = default;
     private:
-        void __recalculateEstimates(point& n_low, point& n_high) override;
+        void __recalculateEstimates(Point& n_low, Point& n_high) override;
     };
 }
 
