@@ -3,4 +3,4 @@ project(MiniSynCPP)
 
 set(CMAKE_CXX_STANDARD 11)
 
-add_executable(MiniSynCPP main.cpp minisync.cpp minisync.h)
+add_executable(MiniSynCPP main.cpp minisync.cpp minisync.h node.cpp node.h CLI11.hpp)
