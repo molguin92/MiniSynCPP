@@ -8,11 +8,17 @@
 #ifndef MINISYNCPP_NODE_H
 #define MINISYNCPP_NODE_H
 
-
-class node
+namespace MiniSync
 {
+    class Node {
 
-};
+    };
 
+    class ReferenceNode
+    {
+
+
+    };
+}
 
 #endif //MINISYNCPP_NODE_H
