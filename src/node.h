@@ -28,18 +28,23 @@ namespace MiniSync
         uint32_t peer_port;
 
         Node(uint16_t bind_port, std::string& peer, uint16_t peer_port);
+        virtual void run() = 0;
     };
 
     class ReferenceNode : Node
     {
     public:
-        ReferenceNode(uint16_t bind_port, std::string& peer, uint16_t peer_port);
+        ReferenceNode(uint16_t bind_port, std::string& peer, uint16_t peer_port) :
+        Node(bind_port, peer, peer_port)
+        {};
     };
 
     class SyncNode : Node
     {
+    private:
+        MiniSync::SyncAlgorithm algo;
     public:
-        SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, MiniSync::SyncAlgorithm sync_algo);
+        SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, MiniSync::SyncAlgorithm& sync_algo);
     };
 }
 
