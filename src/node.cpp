@@ -30,3 +30,12 @@ bind_port(bind_port), local_addr(SOCKADDR{}), peer_addr(SOCKADDR{})
     this->peer_addr.sin_addr.s_addr = inet_addr(peer.c_str());
     this->peer_addr.sin_port = htons(peer_port);
 }
+
+MiniSync::SyncNode::SyncNode(uint16_t bind_port,
+                             std::string& peer,
+                             uint16_t peer_port,
+                             const MiniSync::SyncAlgorithm& sync_algo) :
+Node(bind_port, peer, peer_port), algo(sync_algo)
+{
+
+}
