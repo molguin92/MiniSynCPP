@@ -355,3 +355,7 @@ _deps
 # End of https://www.gitignore.io/api/linux,cmake,c++,c,intellij+all,clion+all,visualstudiocode,pycharm+all,jetbrains+all
 
 # Generated using ignr.py - github.com/Antrikshy/ignr.py
+
+### Ignore socketscpp
+src/socketscpp
+include/socketscpp
