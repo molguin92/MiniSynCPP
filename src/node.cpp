@@ -8,8 +8,8 @@
 #include "node.h"
 #include <string.h>
 
-MiniSync::Node::Node(uint16_t bind_port, std::string& peer, uint16_t peer_port) :
-bind_port(bind_port), local_addr(SOCKADDR{}), peer_addr(SOCKADDR{})
+MiniSync::Node::Node(uint16_t bind_port, std::string& peer, uint16_t peer_port, MODE mode) :
+bind_port(bind_port), local_addr(SOCKADDR{}), peer_addr(SOCKADDR{}), mode(mode)
 {
     this->sock_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     memset(&this->local_addr, 0, sizeof(this->local_addr));
@@ -35,7 +35,15 @@ MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              std::string& peer,
                              uint16_t peer_port,
                              const MiniSync::SyncAlgorithm& sync_algo) :
-Node(bind_port, peer, peer_port), algo(sync_algo)
+Node(bind_port, peer, peer_port, MODE::SYNC), algo(sync_algo)
+{
+
+}
+
+/*
+ * Simply listens for incoming beacons and replies accordingly.
+ */
+void MiniSync::ReferenceNode::run()
 {
 
 }

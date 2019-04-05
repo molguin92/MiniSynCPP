@@ -20,6 +20,12 @@ namespace MiniSync
     class Node
     {
     protected:
+        enum MODE : uint8_t
+        {
+            SYNC = 0x00,
+            REF = 0x01
+        };
+
         int sock_fd;
         uint32_t bind_port;
         SOCKADDR local_addr;
@@ -27,7 +33,9 @@ namespace MiniSync
         std::string peer;
         uint32_t peer_port;
 
-        Node(uint16_t bind_port, std::string& peer, uint16_t peer_port);
+        const MODE mode;
+
+        Node(uint16_t bind_port, std::string& peer, uint16_t peer_port, MODE mode);
         virtual void run() = 0;
     };
 
@@ -35,8 +43,10 @@ namespace MiniSync
     {
     public:
         ReferenceNode(uint16_t bind_port, std::string& peer, uint16_t peer_port) :
-        Node(bind_port, peer, peer_port)
+        Node(bind_port, peer, peer_port, MODE::REF)
         {};
+
+        void run() override;
     };
 
     class SyncNode : Node
