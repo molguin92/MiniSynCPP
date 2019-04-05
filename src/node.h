@@ -32,7 +32,6 @@ namespace MiniSync
         SOCKADDR peer_addr;
         std::string peer;
         uint32_t peer_port;
-
         const MODE mode;
 
         Node(uint16_t bind_port, std::string& peer, uint16_t peer_port, MODE mode);
