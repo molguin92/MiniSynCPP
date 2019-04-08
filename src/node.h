@@ -49,6 +49,10 @@ namespace MiniSync
         {};
 
         void run() override;
+
+    private:
+        void serve();
+        void wait_for_handshake();
     };
 
     class SyncNode : Node
