@@ -27,9 +27,10 @@ namespace MiniSync
         {
             HANDSHAKE = 0x00,
             HANDSHAKE_REPLY = 0x01,
-            BEACON = 0xf0,
-            BEACON_REPLY = 0xf1,
-            GOODBYE = 0xff
+            BEACON = 0x10,
+            BEACON_REPLY = 0x11,
+            GOODBYE = 0xf0,
+            GOODBYE_REPLY = 0xff
         };
 
         enum HANDSHAKE_STATUS : uint8_t
@@ -54,22 +55,14 @@ namespace MiniSync
         typedef struct MSG_BEACON
         {
             uint8_t seq = 0;
-            uint64_t send_time = 0;
         } MSG_BEACON;
 
         typedef struct MSG_BEACON_REPLY
         {
             uint8_t seq = 0;
-            uint64_t beacon_send_time = 0;
             uint64_t beacon_recv_time = 0;
             uint64_t reply_send_time = 0;
         } MSG_BEACON_REPLY;
-
-        typedef struct MSG_GOODBYE
-        {
-            uint8_t ack = 0;
-        } MSG_GOODBYE;
-
     }
 }
 

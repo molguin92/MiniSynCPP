@@ -36,6 +36,8 @@ namespace MiniSync
 
         Node(uint16_t bind_port, std::string& peer, uint16_t peer_port, MODE mode);
         virtual void run() = 0;
+
+        static uint64_t current_time_ns();
     };
 
     class ReferenceNode : Node
