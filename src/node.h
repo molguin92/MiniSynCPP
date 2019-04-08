@@ -35,6 +35,7 @@ namespace MiniSync
         const MODE mode;
 
         Node(uint16_t bind_port, std::string& peer, uint16_t peer_port, MODE mode);
+        ~Node();
         virtual void run() = 0;
 
         static uint64_t current_time_ns();

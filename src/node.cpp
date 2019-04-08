@@ -8,6 +8,7 @@
 #include "node.h"
 #include "net/protocol.h"
 #include <string.h>
+#include <unistd.h>
 
 MiniSync::Node::Node(uint16_t bind_port, std::string& peer, uint16_t peer_port, MODE mode) :
 bind_port(bind_port), local_addr(SOCKADDR{}), peer_addr(SOCKADDR{}), mode(mode)
@@ -37,6 +38,13 @@ uint64_t MiniSync::Node::current_time_ns()
     return std::chrono::duration_cast<std::chrono::nanoseconds>(
     std::chrono::system_clock::now().time_since_epoch()
     ).count();
+}
+
+MiniSync::Node::~Node()
+{
+    // close the socket on destruction
+    shutdown(this->sock_fd, SHUT_RDWR);
+    close(this->sock_fd);
 }
 
 MiniSync::SyncNode::SyncNode(uint16_t bind_port,
