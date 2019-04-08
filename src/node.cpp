@@ -10,7 +10,7 @@
 #include <string.h>
 #include <unistd.h>
 
-MiniSync::Node::Node(uint16_t bind_port, std::string& peer, uint16_t peer_port, MODE mode) :
+MiniSync::Node::Node(uint16_t bind_port, MODE mode) :
 bind_port(bind_port), local_addr(SOCKADDR{}), peer_addr(SOCKADDR{}), mode(mode)
 {
     this->sock_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
@@ -27,13 +27,6 @@ bind_port(bind_port), local_addr(SOCKADDR{}), peer_addr(SOCKADDR{}), mode(mode)
         // TODO: Handle error
         exit(1);
     }
-
-    this->peer = peer;
-    this->peer_port = peer_port;
-    memset(&this->peer_addr, 0, sizeof(this->peer_addr));
-    this->peer_addr.sin_family = AF_INET;
-    this->peer_addr.sin_addr.s_addr = inet_addr(peer.c_str());
-    this->peer_addr.sin_port = htons(peer_port);
 }
 
 uint64_t MiniSync::Node::current_time_ns()
@@ -54,7 +47,7 @@ MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              std::string& peer,
                              uint16_t peer_port,
                              const MiniSync::SyncAlgorithm& sync_algo) :
-Node(bind_port, peer, peer_port, MODE::SYNC), algo(sync_algo)
+Node(bind_port, MODE::SYNC), algo(sync_algo)
 {
 
 }
