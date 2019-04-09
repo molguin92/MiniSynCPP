@@ -46,7 +46,7 @@ namespace MiniSync
         Node(bind_port, MODE::REF)
         {};
 
-        void run() override;
+        void run() final;
 
     private:
         void serve();
@@ -57,8 +57,12 @@ namespace MiniSync
     {
     private:
         const MiniSync::SyncAlgorithm& algo;
+        void handshake();
+        void sync();
+
     public:
         SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, const MiniSync::SyncAlgorithm& sync_algo);
+        void run() final;
     };
 }
 
