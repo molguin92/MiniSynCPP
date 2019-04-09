@@ -29,7 +29,6 @@ namespace MiniSync
         int sock_fd;
         uint32_t bind_port;
         SOCKADDR local_addr;
-        SOCKADDR peer_addr;
         const MODE mode;
 
         Node(uint16_t bind_port, MODE mode);
@@ -61,14 +60,14 @@ namespace MiniSync
     private:
         const std::string& peer;
         const uint16_t peer_port;
+        SOCKADDR peer_addr;
+
         const MiniSync::SyncAlgorithm& algo;
         void handshake();
         void sync();
 
     public:
-        SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, const MiniSync::SyncAlgorithm& sync_algo) :
-        Node(bind_port, MODE::SYNC), algo(sync_algo), peer(peer), peer_port(peer_port)
-        {}
+        SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, const MiniSync::SyncAlgorithm& sync_algo);
 
         ~SyncNode() = default;
 

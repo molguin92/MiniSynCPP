@@ -11,7 +11,7 @@
 #include <unistd.h>
 
 MiniSync::Node::Node(uint16_t bind_port, MODE mode) :
-bind_port(bind_port), local_addr(SOCKADDR{}), peer_addr(SOCKADDR{}), mode(mode)
+bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode)
 {
     this->sock_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     int enable = 1;
@@ -43,13 +43,33 @@ MiniSync::Node::~Node()
     close(this->sock_fd);
 }
 
+void MiniSync::SyncNode::run()
+{
+    this->handshake();
+    this->sync();
+}
+
+void MiniSync::SyncNode::handshake()
+{
+}
+
+void MiniSync::SyncNode::sync()
+{
+
+}
+
 MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              std::string& peer,
                              uint16_t peer_port,
                              const MiniSync::SyncAlgorithm& sync_algo) :
-Node(bind_port, MODE::SYNC), algo(sync_algo)
+Node(bind_port, MODE::SYNC), algo(sync_algo), peer(peer), peer_port(peer_port), peer_addr(SOCKADDR{})
 {
+    // set up peer addr
+    memset(&this->peer_addr, 0, sizeof(SOCKADDR));
 
+    peer_addr.sin_family = AF_INET;
+    peer_addr.sin_addr.s_addr = inet_addr(this->peer.c_str());
+    peer_addr.sin_port = htons(this->peer_port);
 }
 
 /*
