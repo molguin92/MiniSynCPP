@@ -59,12 +59,17 @@ namespace MiniSync
     class SyncNode : Node
     {
     private:
+        const std::string& peer;
+        const uint16_t peer_port;
         const MiniSync::SyncAlgorithm& algo;
         void handshake();
         void sync();
 
     public:
-        SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, const MiniSync::SyncAlgorithm& sync_algo);
+        SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, const MiniSync::SyncAlgorithm& sync_algo) :
+        Node(bind_port, MODE::SYNC), algo(sync_algo), peer(peer), peer_port(peer_port)
+        {}
+
         ~SyncNode() = default;
 
         void run() final;
