@@ -2,6 +2,11 @@ syntax = "proto3";
 
 package MiniSync.Protocol;
 
+enum NodeMode {
+    REFERENCE = 0;
+    SYNC = 1;
+}
+
 message MiniSyncMsg {
     oneof payload {
         Handshake handshake = 1;
@@ -16,12 +21,7 @@ message MiniSyncMsg {
 message Handshake {
     uint32 version_major = 1;
     uint32 version_minor = 2;
-
-    enum Mode {
-        REFERENCE = 0;
-        SYNC = 1;
-    }
-    Mode mode = 3;
+    NodeMode mode = 3;
 }
 
 message HandshakeReply {

@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 #include <string>
 #include "minisync.h"
+#include <protocol.pb.h>
 
 namespace MiniSync
 {
@@ -20,21 +21,17 @@ namespace MiniSync
     class Node
     {
     protected:
-        enum MODE : uint8_t
-        {
-            SYNC = 0x00,
-            REF = 0x01
-        };
-
         int sock_fd;
         uint32_t bind_port;
         SOCKADDR local_addr;
-        const MODE mode;
+        const MiniSync::Protocol::NodeMode mode;
 
-        Node(uint16_t bind_port, MODE mode);
+        Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode);
         ~Node();
 
         static uint64_t current_time_ns();
+        uint64_t send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest);
+        uint64_t recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to);
 
     public:
         virtual void run() = 0;
@@ -44,7 +41,7 @@ namespace MiniSync
     {
     public:
         ReferenceNode(uint16_t bind_port) :
-        Node(bind_port, MODE::REF)
+        Node(bind_port, MiniSync::Protocol::NodeMode::REFERENCE)
         {};
         ~ReferenceNode() = default;
 
