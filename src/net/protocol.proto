@@ -2,6 +2,17 @@ syntax = "proto3";
 
 package MiniSync.Protocol;
 
+message MiniSyncMsg {
+    oneof payload {
+        Handshake handshake = 1;
+        HandshakeReply handshake_r = 2;
+        Beacon beacon = 3;
+        BeaconReply beacon_r = 4;
+        GoodBye goodbye = 5;
+        GoodByeReply goodbye_r = 6;
+    }
+}
+
 message Handshake {
     uint32 version_major = 1;
     uint32 version_minor = 2;
@@ -36,4 +47,7 @@ message BeaconReply {
 message GoodBye {
 }
 message GoodByeReply {
-};
+}
+
+message Poop {
+}

@@ -9,6 +9,7 @@
 #define MINISYNCPP_PROTOCOL_H
 
 #include <cstdint>
+#include "protocol.pb.h"
 
 namespace MiniSync
 {
