@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+package MiniSync.Protocol;
+
+message Handshake {
+    uint32 version_major = 1;
+    uint32 version_minor = 2;
+
+    enum Mode {
+        REFERENCE = 0;
+        SYNC = 1;
+    }
+    Mode mode = 3;
+}
+
+message HandshakeReply {
+    enum Status {
+        ERROR = 0;
+        VERSION_MISMATCH = 1;
+        MODE_MISMATCH = 2;
+        SUCCESS = 3;
+    }
+    Status status = 1;
+}
+
+message Beacon {
+    uint32 seq = 1;
+}
+
+message BeaconReply {
+    uint32 seq = 1;
+    uint64 beacon_recv_time = 2;
+    uint64 reply_send_time = 3;
+}
+
+message GoodBye {
+}
+message GoodByeReply {
+};
