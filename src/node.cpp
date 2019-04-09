@@ -51,11 +51,12 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
     uint8_t reply_buf[out_sz];
     msg.SerializeToArray(reply_buf, out_sz);
 
+    uint64_t timestamp = this->current_time_ns(); // timestamp BEFORE passing on to network stack
     if (sendto(this->sock_fd, reply_buf, out_sz, 0, dest, sizeof(*dest)) != out_sz)
         // TODO: HANDLE ERROR
         exit(1);
 
-    return this->current_time_ns();
+    return timestamp;
 }
 
 uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to)
