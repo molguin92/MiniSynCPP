@@ -51,6 +51,26 @@ void MiniSync::SyncNode::run()
 
 void MiniSync::SyncNode::handshake()
 {
+    // send handshake request to peer
+    size_t handshake_len = (sizeof(Protocol::MSG_T) + sizeof(Protocol::MSG_HANDSHAKE)) * sizeof(uint8_t);
+    uint8_t handshake_buf[handshake_len];
+
+    {
+        Protocol::MSG_HANDSHAKE handshake{};
+        memset(&handshake, 0x00, sizeof(Protocol::MSG_HANDSHAKE));
+        handshake.node_mode = this->mode;
+        handshake.prot_v_major = Protocol::VERSION_MAJOR;
+        handshake.prot_v_minor = Protocol::VERSION_MINOR;
+
+        handshake_buf[0] = static_cast<uint8_t>(Protocol::MSG_T::HANDSHAKE);
+        memcpy(reinterpret_cast<void*>(handshake_buf[1]), &handshake, handshake_len);
+    }
+
+
+    bool connecting = true;
+    while (connecting)
+    {
+    }
 }
 
 void MiniSync::SyncNode::sync()
