@@ -93,7 +93,8 @@ void MiniSync::ReferenceNode::serve()
     while (listening)
     {
         // prepare variables for incoming message
-        memset(buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
+        // sizeof(uint8_t) SHOULD be 1, but it doesn't hurt to be explicit to avoid bugs
+        memset(buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN * sizeof(uint8_t));
 
         // socket is connected, so we don't need to store the peer address
         if ((recv_sz = recvfrom(this->sock_fd, buf, MiniSync::Protocol::MAX_MSG_LEN, 0, nullptr, nullptr))
@@ -167,7 +168,9 @@ void MiniSync::ReferenceNode::wait_for_handshake()
         // wait for handshake
         // prepare variables for incoming message
         memset(&reply_to, 0x00, sizeof(reply_to));
-        memset(buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
+
+        // sizeof(uint8_t) SHOULD be 1, but it doesn't hurt to be explicit to avoid bugs
+        memset(buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN * sizeof(uint8_t));
         reply_to_len = sizeof(reply_to);
 
         if ((recv_sz = recvfrom(this->sock_fd, buf, MiniSync::Protocol::MAX_MSG_LEN, 0,
