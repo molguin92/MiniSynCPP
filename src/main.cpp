@@ -6,7 +6,7 @@
 */
 
 #include <iostream>
-#include "../include/CLI11.hpp"
+#include "CLI11/CLI11.hpp"
 
 int main(int argc, char* argv[])
 {

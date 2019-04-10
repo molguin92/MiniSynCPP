@@ -15,7 +15,7 @@ add_executable(MiniSynCPP
         src/main.cpp
         src/minisync.cpp src/minisync.h
         src/node.cpp src/node.h
-        include/CLI11.hpp
+        include/CLI11/CLI11.hpp
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
         ${PROTO_SRC} ${PROTO_HDR} src/exception.cpp src/exception.h src/exception.cpp)
 target_link_libraries(MiniSynCPP
