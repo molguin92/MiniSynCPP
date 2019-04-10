@@ -90,6 +90,16 @@ void MiniSync::SyncNode::run()
 void MiniSync::SyncNode::handshake()
 {
     // send handshake request to peer
+    MiniSync::Protocol::MiniSyncMsg msg{};
+    MiniSync::Protocol::Handshake handshake{};
+
+    handshake.set_mode(this->mode);
+    handshake.set_version_major(MiniSync::Protocol::VERSION_MAJOR);
+    handshake.set_version_minor(MiniSync::Protocol::VERSION_MINOR);
+
+    msg.set_allocated_handshake(&handshake);
+
+    // TODO: finish
 }
 
 void MiniSync::SyncNode::sync()
