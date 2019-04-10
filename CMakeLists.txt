@@ -16,5 +16,5 @@ add_executable(MiniSynCPP
         src/node.cpp src/node.h
         include/CLI11.hpp
         src/net/protocol.h
-        ${PROTO_SRC} ${PROTO_HDR})
+        ${PROTO_SRC} ${PROTO_HDR} src/exception.cpp src/exception.h src/exception.cpp)
 target_link_libraries(MiniSynCPP ${Protobuf_LIBRARIES})
