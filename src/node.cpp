@@ -75,8 +75,9 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
 
     uint64_t timestamp = this->current_time_ns(); // timestamp after receiving whole message
 
-    // parse buffer into a protobuf message
-    msg.ParseFromArray(buf, recv_sz); // TODO: handle error while parsing
+    // deserialize buffer into a protobuf message
+    if (!msg.ParseFromArray(buf, recv_sz))
+        throw MiniSync::Exceptions::DeserializeMsgException();
     return timestamp;
 }
 
@@ -98,7 +99,43 @@ void MiniSync::SyncNode::handshake()
 
     msg.set_allocated_handshake(&handshake);
 
-    // TODO: finish
+    MiniSync::Protocol::MiniSyncMsg incoming{};
+
+    for (;;)
+    {
+        try
+        {
+            this->send_message(msg, (struct sockaddr*) &this->peer_addr);
+            // wait for handshake response
+            this->recv_message(incoming, (struct sockaddr*) &this->peer_addr);
+        }
+        catch (MiniSync::Exceptions::SocketWriteException& e)
+        {
+            // TODO: handle exception (could not write to socket?)
+            break;
+        }
+        catch (MiniSync::Exceptions::SocketReadException& e)
+        {
+            // TODO: handle exception (could not read from socket?)
+            break;
+        }
+        catch (MiniSync::Exceptions::TimeoutException& e)
+        {
+            // if timed out, repeat!
+            continue;
+        }
+        catch (MiniSync::Exceptions::DeserializeMsgException& e)
+        {
+            // Error while receiving message, probably malformed so just discard it
+            continue;
+        }
+        catch (MiniSync::Exceptions::SerializeMsgException& e)
+        {
+            // failed to serialize outgoing message? That's weird!
+            // TODO: handle this
+            break;
+        }
+    }
 }
 
 void MiniSync::SyncNode::sync()

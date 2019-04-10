@@ -31,6 +31,18 @@ namespace MiniSync
         public:
             const char* what() const noexcept final;
         };
+
+        class DeserializeMsgException : public std::exception
+        {
+        public:
+            const char* what() const noexcept final;
+        };
+
+        class SerializeMsgException : public std::exception
+        {
+        public:
+            const char* what() const noexcept final;
+        };
     }
 }
 

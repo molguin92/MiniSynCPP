@@ -21,3 +21,13 @@ const char* MiniSync::Exceptions::SocketWriteException::what() const noexcept
 {
     return "Error while trying to write to socket.";
 }
+
+const char* MiniSync::Exceptions::DeserializeMsgException::what() const noexcept
+{
+    return "Error deserializing byte buffer into Protobuf Message.";
+}
+
+const char* MiniSync::Exceptions::SerializeMsgException::what() const noexcept
+{
+    return "Error serializing Protobuf Message into byte buffer.";
+}
