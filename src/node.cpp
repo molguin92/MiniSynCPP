@@ -7,6 +7,7 @@
 
 #include "node.h"
 #include "net/protocol.h"
+#include "exception.h"
 #include <string.h>
 #include <unistd.h>
 #include <protocol.pb.h>
@@ -53,26 +54,24 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
 
     uint64_t timestamp = this->current_time_ns(); // timestamp BEFORE passing on to network stack
     if (sendto(this->sock_fd, reply_buf, out_sz, 0, dest, sizeof(*dest)) != out_sz)
-        // TODO: HANDLE ERROR
-        exit(1);
+        throw MiniSync::Exceptions::SocketWriteException();
 
     return timestamp;
 }
 
 uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to)
 {
-    uint8_t buf[MiniSync::Protocol::MAX_MSG_LEN];
+    uint8_t buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
     ssize_t recv_sz;
     socklen_t reply_to_len = sizeof(*reply_to);
     msg.Clear();
 
     memset(reply_to, 0x00, reply_to_len);
-    // sizeof(uint8_t) SHOULD be 1, but it doesn't hurt to be explicit to avoid bugs
-    memset(buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN * sizeof(uint8_t));
-
     if ((recv_sz = recvfrom(this->sock_fd, buf, MiniSync::Protocol::MAX_MSG_LEN, 0, reply_to, &reply_to_len)) < 0)
-        // TODO: HANDLE ERROR
-        exit(1);
+    {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) throw MiniSync::Exceptions::TimeoutException();
+        else throw MiniSync::Exceptions::SocketReadException();
+    }
 
     uint64_t timestamp = this->current_time_ns(); // timestamp after receiving whole message
 
