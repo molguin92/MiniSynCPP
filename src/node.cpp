@@ -100,24 +100,48 @@ void MiniSync::SyncNode::handshake()
     msg.set_allocated_handshake(&handshake);
 
     MiniSync::Protocol::MiniSyncMsg incoming{};
-
-    for (;;)
+    bool success = false;
+    while (!success)
     {
         try
         {
             this->send_message(msg, (struct sockaddr*) &this->peer_addr);
             // wait for handshake response
             this->recv_message(incoming, (struct sockaddr*) &this->peer_addr);
+
+            if (!incoming.has_handshake_r()) continue; // message needs to be a handshake reply
+            const MiniSync::Protocol::HandshakeReply& reply = incoming.handshake_r();
+            switch (reply.status())
+            {
+                case Protocol::HandshakeReply_Status_SUCCESS:
+                {
+                    // if success, we can "connect" the socket and move on to actually synchronizing.
+                    if (connect(this->sock_fd, (struct sockaddr*) &this->peer_addr, sizeof(this->peer_addr)) < 0)
+                        // TODO: handle error
+                        exit(1);
+                    success = true;
+                    break;
+                }
+                case Protocol::HandshakeReply_Status_ERROR:
+                case Protocol::HandshakeReply_Status_VERSION_MISMATCH:
+                case Protocol::HandshakeReply_Status_MODE_MISMATCH:
+                case Protocol::HandshakeReply_Status_HandshakeReply_Status_INT_MIN_SENTINEL_DO_NOT_USE_:
+                case Protocol::HandshakeReply_Status_HandshakeReply_Status_INT_MAX_SENTINEL_DO_NOT_USE_:
+                {
+                    // TODO: Handle these errors, or at least LOG THEM!
+                    exit(1);
+                }
+            }
         }
         catch (MiniSync::Exceptions::SocketWriteException& e)
         {
             // TODO: handle exception (could not write to socket?)
-            break;
+            exit(1);
         }
         catch (MiniSync::Exceptions::SocketReadException& e)
         {
             // TODO: handle exception (could not read from socket?)
-            break;
+            exit(1);
         }
         catch (MiniSync::Exceptions::TimeoutException& e)
         {
@@ -133,7 +157,7 @@ void MiniSync::SyncNode::handshake()
         {
             // failed to serialize outgoing message? That's weird!
             // TODO: handle this
-            break;
+            exit(1);
         }
     }
 }
