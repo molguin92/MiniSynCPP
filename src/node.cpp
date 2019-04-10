@@ -122,6 +122,12 @@ peer_addr(SOCKADDR{})
     peer_addr.sin_family = AF_INET;
     peer_addr.sin_addr.s_addr = inet_addr(this->peer.c_str());
     peer_addr.sin_port = htons(this->peer_port);
+
+    // set a timeout for read operations, in order to send repeat beacons on timeouts
+    struct timeval read_timeout{0x00};
+    read_timeout.tv_sec = 0;
+    read_timeout.tv_usec = MiniSync::SyncNode::RD_TIMEOUT_USEC;
+    setsockopt(this->sock_fd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout));
 }
 
 /*

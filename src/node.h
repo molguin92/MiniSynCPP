@@ -64,6 +64,8 @@ namespace MiniSync
         void sync();
 
     public:
+        static const uint32_t RD_TIMEOUT_USEC = 100000; // 100 ms
+
         SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, const MiniSync::SyncAlgorithm& sync_algo);
 
         ~SyncNode() = default;
