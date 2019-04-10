@@ -64,6 +64,7 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
     uint8_t buf[MiniSync::Protocol::MAX_MSG_LEN];
     ssize_t recv_sz;
     socklen_t reply_to_len = sizeof(*reply_to);
+    msg.Clear();
 
     memset(reply_to, 0x00, reply_to_len);
     // sizeof(uint8_t) SHOULD be 1, but it doesn't hurt to be explicit to avoid bugs
@@ -73,7 +74,7 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
         // TODO: HANDLE ERROR
         exit(1);
 
-    uint64_t timestamp = this->current_time_ns();
+    uint64_t timestamp = this->current_time_ns(); // timestamp after receiving whole message
 
     // parse buffer into a protobuf message
     msg.ParseFromArray(buf, recv_sz); // TODO: handle error while parsing
@@ -136,11 +137,6 @@ void MiniSync::ReferenceNode::serve()
     bool listening = true;
     while (listening)
     {
-        // prepare variables for incoming message
-        incoming.Clear();
-        outgoing.Clear();
-        reply.Clear();
-
         // timestamp reception
         recv_time_ns = this->recv_message(incoming, nullptr);
         switch (incoming.payload_case())
@@ -155,6 +151,10 @@ void MiniSync::ReferenceNode::serve()
                 reply.set_reply_send_time(Node::current_time_ns());
 
                 this->send_message(outgoing, nullptr);
+
+                // clean up after send
+                outgoing.Clear();
+                reply.Clear();
                 break;
             }
             case Protocol::MiniSyncMsg::kGoodbye:
@@ -191,11 +191,6 @@ void MiniSync::ReferenceNode::wait_for_handshake()
     while (listening)
     {
         // wait for handshake
-        // prepare variables for incoming message
-        incoming.Clear();
-        outgoing.Clear();
-        reply.Clear();
-
         this->recv_message(incoming, &reply_to);
         switch (incoming.payload_case())
         {
@@ -221,6 +216,10 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                 // reply is sent no matter what
                 outgoing.set_allocated_handshake_r(&reply);
                 this->send_message(outgoing, &reply_to);
+
+                // cleanup
+                outgoing.Clear();
+                reply.Clear();
                 break;
             }
                 // ignore all other messages
