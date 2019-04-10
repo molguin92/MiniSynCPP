@@ -214,7 +214,8 @@ void MiniSync::ReferenceNode::serve()
     while (listening)
     {
         // timestamp reception
-        recv_time_ns = this->recv_message(incoming, nullptr);
+        recv_time_ns = this->recv_message(incoming, nullptr); // TODO: handle errors
+        // TODO: change switch to if()?
         switch (incoming.payload_case())
         {
             case Protocol::MiniSyncMsg::kBeacon:
@@ -268,6 +269,8 @@ void MiniSync::ReferenceNode::wait_for_handshake()
     {
         // wait for handshake
         this->recv_message(incoming, &reply_to);
+        // TODO: handle errors
+        // TODO: condense switch into if()
         switch (incoming.payload_case())
         {
             case Protocol::MiniSyncMsg::kHandshake:
@@ -291,7 +294,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
 
                 // reply is sent no matter what
                 outgoing.set_allocated_handshake_r(&reply);
-                this->send_message(outgoing, &reply_to);
+                this->send_message(outgoing, &reply_to); // TODO: handle exceptions
 
                 // cleanup
                 outgoing.Clear();
