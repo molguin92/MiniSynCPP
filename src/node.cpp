@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <protocol.pb.h>
 #include <google/protobuf/message.h>
+#include "loguru/loguru.hpp"
 
 MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
 bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode)
@@ -25,11 +26,8 @@ bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode)
     this->local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     this->local_addr.sin_port = htons(bind_port);
 
-    if (bind(this->sock_fd, (struct sockaddr*) &this->local_addr, sizeof(this->local_addr)) < 0)
-    {
-        // TODO: Handle error
-        exit(1);
-    }
+    CHECK_GE_F(bind(this->sock_fd, (struct sockaddr*) &this->local_addr, sizeof(this->local_addr)), 0,
+               "Failed to bind socket to UDP port %d", bind_port);
 }
 
 uint64_t MiniSync::Node::current_time_ns()
@@ -116,32 +114,29 @@ void MiniSync::SyncNode::handshake()
                 case Protocol::HandshakeReply_Status_SUCCESS:
                 {
                     // if success, we can "connect" the socket and move on to actually synchronizing.
-                    if (connect(this->sock_fd, (struct sockaddr*) &this->peer_addr, sizeof(this->peer_addr)) < 0)
-                        // TODO: handle error
-                        exit(1);
+                    CHECK_GE_F(connect(this->sock_fd, (struct sockaddr*) &this->peer_addr, sizeof(this->peer_addr)), 0,
+                               "Failed connecting socket to peer %s:%d", this->peer.c_str(), this->peer_port);
                     success = true;
                     break;
                 }
-                case Protocol::HandshakeReply_Status_ERROR:
+
                 case Protocol::HandshakeReply_Status_VERSION_MISMATCH:
+                    ABORT_F("Handshake failed: version mismatch.");
                 case Protocol::HandshakeReply_Status_MODE_MISMATCH:
+                    ABORT_F("Handshake failed: Mode mismatch between the nodes.");
                 case Protocol::HandshakeReply_Status_HandshakeReply_Status_INT_MIN_SENTINEL_DO_NOT_USE_:
                 case Protocol::HandshakeReply_Status_HandshakeReply_Status_INT_MAX_SENTINEL_DO_NOT_USE_:
-                {
-                    // TODO: Handle these errors, or at least LOG THEM!
-                    exit(1);
-                }
+                case Protocol::HandshakeReply_Status_ERROR:
+                    ABORT_F("Handshake failed with unspecified error!");
             }
         }
         catch (MiniSync::Exceptions::SocketWriteException& e)
         {
-            // TODO: handle exception (could not write to socket?)
-            exit(1);
+            ABORT_F("%s", e.what());
         }
         catch (MiniSync::Exceptions::SocketReadException& e)
         {
-            // TODO: handle exception (could not read from socket?)
-            exit(1);
+            ABORT_F("%s", e.what());
         }
         catch (MiniSync::Exceptions::TimeoutException& e)
         {
@@ -155,9 +150,7 @@ void MiniSync::SyncNode::handshake()
         }
         catch (MiniSync::Exceptions::SerializeMsgException& e)
         {
-            // failed to serialize outgoing message? That's weird!
-            // TODO: handle this
-            exit(1);
+            ABORT_F("%s", e.what());
         }
     }
 }
@@ -214,7 +207,16 @@ void MiniSync::ReferenceNode::serve()
     while (listening)
     {
         // timestamp reception
-        recv_time_ns = this->recv_message(incoming, nullptr); // TODO: handle errors
+        try
+        {
+            recv_time_ns = this->recv_message(incoming, nullptr);
+        }
+        catch (std::exception& e)
+        {
+            // TODO: More finegrained handling.
+            ABORT_F("%s", e.what());
+        }
+
         // TODO: change switch to if()?
         switch (incoming.payload_case())
         {
@@ -227,7 +229,15 @@ void MiniSync::ReferenceNode::serve()
                 outgoing.set_allocated_beacon_r(&reply);
                 reply.set_reply_send_time(Node::current_time_ns());
 
-                this->send_message(outgoing, nullptr);
+                try
+                {
+                    this->send_message(outgoing, nullptr);
+                }
+                catch (std::exception& e)
+                {
+                    // TODO: More finegrained handling.
+                    ABORT_F("%s", e.what());
+                }
 
                 // clean up after send
                 outgoing.Clear();
@@ -268,8 +278,15 @@ void MiniSync::ReferenceNode::wait_for_handshake()
     while (listening)
     {
         // wait for handshake
-        this->recv_message(incoming, &reply_to);
-        // TODO: handle errors
+        try
+        {
+            this->recv_message(incoming, &reply_to);
+        }
+        catch (std::exception& e)
+        {
+            // TODO: finegrained handling
+            ABORT_F("%s", e.what());
+        }
         // TODO: condense switch into if()
         switch (incoming.payload_case())
         {
@@ -294,7 +311,15 @@ void MiniSync::ReferenceNode::wait_for_handshake()
 
                 // reply is sent no matter what
                 outgoing.set_allocated_handshake_r(&reply);
-                this->send_message(outgoing, &reply_to); // TODO: handle exceptions
+                try
+                {
+                    this->send_message(outgoing, &reply_to);
+                }
+                catch (std::exception& e)
+                {
+                    // TODO: More finegrained handling.
+                    ABORT_F("%s", e.what());
+                }
 
                 // cleanup
                 outgoing.Clear();
