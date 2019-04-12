@@ -8,6 +8,7 @@
 #include <iostream>
 #include "CLI11/CLI11.hpp"
 #include "loguru/loguru.hpp"
+#include "node.h"
 
 int main(int argc, char* argv[])
 {
@@ -42,10 +43,15 @@ int main(int argc, char* argv[])
     if (modes.front()->get_name() == "REF_MODE")
     {
         LOG_F(INFO, "Started node in REFERENCE mode.");
+        MiniSync::ReferenceNode node{bind_port};
+        node.run();
     }
     else if (modes.front()->get_name() == "SYNC_MODE")
     {
         LOG_F(INFO, "Started node in SYNCHRONIZATION mode.");
+        MiniSync::TinySyncAlgorithm algo{};
+        MiniSync::SyncNode node{bind_port, peer, port, algo};
+        node.run();
     }
     else
         ABORT_F("Invalid mode specified for application - THIS SHOULD NEVER HAPPEN?");
