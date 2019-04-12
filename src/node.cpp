@@ -69,11 +69,13 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
 {
     uint8_t buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
     ssize_t recv_sz;
-    socklen_t reply_to_len = sizeof(*reply_to);
+    socklen_t reply_to_len = sizeof(struct sockaddr_in);
     msg.Clear();
 
     DLOG_F(INFO, "Listening for incoming messages...");
-    memset(reply_to, 0x00, reply_to_len);
+    if (reply_to != nullptr)
+        memset(reply_to, 0x00, reply_to_len);
+
     if ((recv_sz = recvfrom(this->sock_fd, buf, MiniSync::Protocol::MAX_MSG_LEN, 0, reply_to, &reply_to_len)) < 0)
     {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -106,13 +108,13 @@ void MiniSync::SyncNode::handshake()
 {
     // send handshake request to peer
     MiniSync::Protocol::MiniSyncMsg msg{};
-    MiniSync::Protocol::Handshake handshake{};
+    auto* handshake = new MiniSync::Protocol::Handshake{};
 
-    handshake.set_mode(this->mode);
-    handshake.set_version_major(MiniSync::Protocol::VERSION_MAJOR);
-    handshake.set_version_minor(MiniSync::Protocol::VERSION_MINOR);
+    handshake->set_mode(this->mode);
+    handshake->set_version_major(MiniSync::Protocol::VERSION_MAJOR);
+    handshake->set_version_minor(MiniSync::Protocol::VERSION_MINOR);
 
-    msg.set_allocated_handshake(&handshake);
+    msg.set_allocated_handshake(handshake);
 
     MiniSync::Protocol::MiniSyncMsg incoming{};
     bool success = false;
@@ -183,7 +185,6 @@ void MiniSync::SyncNode::handshake()
 void MiniSync::SyncNode::sync()
 {
     // send sync beacons and wait for timestamps
-    MiniSync::Protocol::Beacon beacon{};
     MiniSync::Protocol::MiniSyncMsg msg{};
     bool running = true;
 
@@ -192,8 +193,9 @@ void MiniSync::SyncNode::sync()
 
     while (running)
     {
-        beacon.set_seq(seq);
-        msg.set_allocated_beacon(&beacon);
+        auto* beacon = new MiniSync::Protocol::Beacon{};
+        beacon->set_seq(seq);
+        msg.set_allocated_beacon(beacon);
 
         LOG_F(INFO, "Sending beacon (SEQ %d).", seq);
 
@@ -214,7 +216,7 @@ void MiniSync::SyncNode::sync()
             const MiniSync::Protocol::BeaconReply& reply = msg.beacon_r();
 
             // ignore out-of-order replies
-            if (beacon.seq() != seq)
+            if (reply.seq() != seq)
             {
                 LOG_F(WARNING, "Beacon reply was out of order, ignoring...");
                 continue;
@@ -232,7 +234,7 @@ void MiniSync::SyncNode::sync()
             LOG_F(INFO, "Drift: %f | Offset: %ld", algo.getDrift(), algo.getOffsetNanoSeconds());
             seq++;
             msg.Clear();
-            beacon.Clear();
+            // msg handles clearing beacon
 
             std::this_thread::sleep_for(std::chrono::milliseconds(100)); // TODO: parameterize
         }
@@ -252,8 +254,6 @@ void MiniSync::SyncNode::sync()
         {
             ABORT_F("%s", e.what());
         }
-
-        beacon.Clear();
     }
 }
 
@@ -299,7 +299,6 @@ void MiniSync::ReferenceNode::serve()
 
     MiniSync::Protocol::MiniSyncMsg incoming{};
     MiniSync::Protocol::MiniSyncMsg outgoing{};
-    MiniSync::Protocol::BeaconReply reply{};
 
     // wait for beacons
     bool listening = true;
@@ -324,18 +323,19 @@ void MiniSync::ReferenceNode::serve()
         }
 
         // TODO: change switch to if()?
+        auto* reply = new MiniSync::Protocol::BeaconReply{};
         switch (incoming.payload_case())
         {
             case Protocol::MiniSyncMsg::kBeacon:
             {
                 const MiniSync::Protocol::Beacon& beacon = incoming.beacon();
-                reply.set_seq(beacon.seq());
-                reply.set_beacon_recv_time(recv_time_ns);
+                reply->set_seq(beacon.seq());
+                reply->set_beacon_recv_time(recv_time_ns);
 
                 LOG_F(INFO, "Received a beacon (SEQ %u).", beacon.seq());
 
-                outgoing.set_allocated_beacon_r(&reply);
-                reply.set_reply_send_time(Node::current_time_ns());
+                outgoing.set_allocated_beacon_r(reply);
+                reply->set_reply_send_time(Node::current_time_ns());
 
                 try
                 {
@@ -350,7 +350,7 @@ void MiniSync::ReferenceNode::serve()
 
                 // clean up after send
                 outgoing.Clear();
-                reply.Clear();
+                // no need to clear up reply, outgoing takes care of it
                 break;
             }
             case Protocol::MiniSyncMsg::kGoodbye:
@@ -376,12 +376,11 @@ void MiniSync::ReferenceNode::serve()
 void MiniSync::ReferenceNode::wait_for_handshake()
 {
     // set up variables
-    sockaddr reply_to{};
-    socklen_t reply_to_len = 0;
+    struct sockaddr reply_to{};
+    socklen_t reply_to_len = sizeof(reply_to);
 
     MiniSync::Protocol::MiniSyncMsg incoming{};
     MiniSync::Protocol::MiniSyncMsg outgoing{};
-    MiniSync::Protocol::HandshakeReply reply{};
 
     // discard anything that is not a handshake request
     bool listening = true;
@@ -405,6 +404,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
             ABORT_F("%s", e.what());
         }
         // TODO: condense switch into if()
+        auto* reply = new MiniSync::Protocol::HandshakeReply{};
         switch (incoming.payload_case())
         {
             case Protocol::MiniSyncMsg::kHandshake:
@@ -420,25 +420,26 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                     LOG_F(WARNING, "Local version: %d.%d - Remote version: %d.%d",
                           Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
                           handshake.version_major(), handshake.version_minor());
-                    reply.set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
+                    reply->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
                 }
                 else if (handshake.mode() == this->mode)
                 {
                     LOG_F(WARNING, "Handshake: Mode mismatch.");
-                    reply.set_status(ReplyStatus::HandshakeReply_Status_MODE_MISMATCH);
+                    reply->set_status(ReplyStatus::HandshakeReply_Status_MODE_MISMATCH);
                 }
                 else
                 {
                     // everything is ok, let's "connect"
                     LOG_F(INFO, "Handshake successful.");
-                    reply.set_status(ReplyStatus::HandshakeReply_Status_SUCCESS);
+                    reply->set_status(ReplyStatus::HandshakeReply_Status_SUCCESS);
                     // UDP is connectionless, this is merely to store the address of the client and "fake" a connection
-                    connect(this->sock_fd, (struct sockaddr*) &reply_to, reply_to_len);
+                    CHECK_GE_F(connect(this->sock_fd, &reply_to, reply_to_len), 0,
+                               "Call to connect failed. ERRNO: %s", strerror(errno));
                     listening = false;
                 }
 
                 // reply is sent no matter what
-                outgoing.set_allocated_handshake_r(&reply);
+                outgoing.set_allocated_handshake_r(reply);
                 try
                 {
                     this->send_message(outgoing, &reply_to);
@@ -452,7 +453,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
 
                 // cleanup
                 outgoing.Clear();
-                reply.Clear();
+                // no need to clear reply, outgoing has ownership and will clear it
                 break;
             }
                 // ignore all other messages
