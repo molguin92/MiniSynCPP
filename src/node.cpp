@@ -12,6 +12,7 @@
 #include <unistd.h>
 #include <protocol.pb.h>
 #include <google/protobuf/message.h>
+#include <thread>
 #include "loguru/loguru.hpp"
 
 MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
@@ -157,13 +158,72 @@ void MiniSync::SyncNode::handshake()
 
 void MiniSync::SyncNode::sync()
 {
+    // send sync beacons and wait for timestamps
+    MiniSync::Protocol::Beacon beacon{};
+    MiniSync::Protocol::MiniSyncMsg msg{};
+    bool running = true;
 
+    uint64_t to, tbr, tbt, tr;
+    uint8_t seq = 0;
+
+    while (running)
+    {
+        beacon.set_seq(seq);
+
+        try
+        {
+            // nullptr since we should already be connected
+            msg.set_allocated_beacon(&beacon);
+            to = this->send_message(msg, nullptr);
+
+            // wait for reply
+            tr = this->recv_message(msg, nullptr);
+
+            if (!msg.has_beacon_r()) continue;
+
+            const MiniSync::Protocol::BeaconReply& reply = msg.beacon_r();
+
+            // ignore out-of-order replies
+            if (beacon.seq() != seq) continue;
+
+            tbr = reply.beacon_recv_time();
+            tbt = reply.reply_send_time();
+
+            this->algo.addDataPoint(to, tbr, tr);
+            this->algo.addDataPoint(to, tbt, tr);
+
+            // TODO do something with the time?
+            seq++;
+            msg.Clear();
+            beacon.Clear();
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // TODO: parameterize
+        }
+        catch (MiniSync::Exceptions::TimeoutException& e)
+        {
+            // timed out, retry sending beacon
+            LOG_F(INFO, "Timed out waiting for beacon reply, retrying...");
+            continue;
+        }
+        catch (MiniSync::Exceptions::DeserializeMsgException& e)
+        {
+            // could not parse incoming message, just retry
+            LOG_F(WARNING, "Could not deserialize incoming message, retrying...");
+            continue;
+        }
+        catch (std::exception& e)
+        {
+            ABORT_F("%s", e.what());
+        }
+
+        beacon.Clear();
+    }
 }
 
 MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              std::string& peer,
                              uint16_t peer_port,
-                             const MiniSync::SyncAlgorithm& sync_algo) :
+                             MiniSync::SyncAlgorithm& sync_algo) :
 Node(bind_port, MiniSync::Protocol::NodeMode::SYNC),
 algo(sync_algo),
 peer(peer),

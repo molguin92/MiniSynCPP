@@ -58,15 +58,14 @@ namespace MiniSync
         const std::string& peer;
         const uint16_t peer_port;
         SOCKADDR peer_addr;
-
-        const MiniSync::SyncAlgorithm& algo;
+        MiniSync::SyncAlgorithm& algo;
         void handshake();
         void sync();
 
     public:
         static const uint32_t RD_TIMEOUT_USEC = 100000; // 100 ms
 
-        SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, const MiniSync::SyncAlgorithm& sync_algo);
+        SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, MiniSync::SyncAlgorithm& sync_algo);
 
         ~SyncNode() = default;
 
