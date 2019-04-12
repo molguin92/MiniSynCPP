@@ -24,7 +24,7 @@ IEEE Wireless Communications and Networking, 2003. WCNC 2003., New Orleans, LA, 
 10.1109/WCNC.2003.1200555. URL: http://ieeexplore.ieee.org/stamp/stamp.jsp?tp=&arnumber=1200555&isnumber=27029
 
 ## Copyright
-Code is Copyright© (2019 -) of Manuel Olguín Muñoz <manuel@olguin.se), provided under an MIT License.
+Code is Copyright© (2019 -) of Manuel Olguín Muñoz <manuel@olguin.se>, provided under an MIT License.
 See [LICENSE](LICENSE) for details.
 
 The TinySync and MiniSync algorithms are owned by the authors of the referenced papers [1, 2].
