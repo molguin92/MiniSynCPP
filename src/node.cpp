@@ -27,6 +27,7 @@ bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode)
     this->local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     this->local_addr.sin_port = htons(bind_port);
 
+    LOG_F(INFO, "Binding UDP socket to port %d", this->bind_port);
     CHECK_GE_F(bind(this->sock_fd, (struct sockaddr*) &this->local_addr, sizeof(this->local_addr)), 0,
                "Failed to bind socket to UDP port %d", bind_port);
 }
@@ -51,10 +52,16 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
     uint8_t reply_buf[out_sz];
     msg.SerializeToArray(reply_buf, out_sz);
 
+    DLOG_F(INFO, "Sending a message of size %ld bytes...", out_sz);
+
     uint64_t timestamp = this->current_time_ns(); // timestamp BEFORE passing on to network stack
     if (sendto(this->sock_fd, reply_buf, out_sz, 0, dest, sizeof(*dest)) != out_sz)
+    {
+        DLOG_F(WARNING, "Could not write to socket.");
         throw MiniSync::Exceptions::SocketWriteException();
+    }
 
+    DLOG_F(INFO, "Sent a message of size %ld bytes with timestamp %ld...", out_sz, timestamp);
     return timestamp;
 }
 
@@ -65,18 +72,27 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
     socklen_t reply_to_len = sizeof(*reply_to);
     msg.Clear();
 
+    DLOG_F(INFO, "Listening for incoming messages...");
     memset(reply_to, 0x00, reply_to_len);
     if ((recv_sz = recvfrom(this->sock_fd, buf, MiniSync::Protocol::MAX_MSG_LEN, 0, reply_to, &reply_to_len)) < 0)
     {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) throw MiniSync::Exceptions::TimeoutException();
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+        {
+            DLOG_F(WARNING, "Timed out waiting for messages.");
+            throw MiniSync::Exceptions::TimeoutException();
+        }
         else throw MiniSync::Exceptions::SocketReadException();
     }
 
     uint64_t timestamp = this->current_time_ns(); // timestamp after receiving whole message
 
+    DLOG_F(INFO, "Got a datagram at time %ld.", timestamp);
     // deserialize buffer into a protobuf message
     if (!msg.ParseFromArray(buf, recv_sz))
+    {
+        DLOG_F(WARNING, "Failed to deserialize payload.");
         throw MiniSync::Exceptions::DeserializeMsgException();
+    }
     return timestamp;
 }
 
@@ -104,11 +120,17 @@ void MiniSync::SyncNode::handshake()
     {
         try
         {
+            LOG_F(INFO, "Initializing handshake with peer %s:%d.", this->peer.c_str(), this->peer_port);
             this->send_message(msg, (struct sockaddr*) &this->peer_addr);
             // wait for handshake response
             this->recv_message(incoming, (struct sockaddr*) &this->peer_addr);
 
-            if (!incoming.has_handshake_r()) continue; // message needs to be a handshake reply
+            if (!incoming.has_handshake_r())
+            {
+                // message needs to be a handshake reply
+                LOG_F(WARNING, "Got a message from peer which was not a handshake reply.");
+                continue;
+            }
             const MiniSync::Protocol::HandshakeReply& reply = incoming.handshake_r();
             switch (reply.status())
             {
@@ -142,11 +164,13 @@ void MiniSync::SyncNode::handshake()
         catch (MiniSync::Exceptions::TimeoutException& e)
         {
             // if timed out, repeat!
+            LOG_F(INFO, "Timed out waiting for handshake reply, retrying...");
             continue;
         }
         catch (MiniSync::Exceptions::DeserializeMsgException& e)
         {
             // Error while receiving message, probably malformed so just discard it
+            LOG_F(INFO, "Failed to deserialize incoming message, retrying...");
             continue;
         }
         catch (MiniSync::Exceptions::SerializeMsgException& e)
@@ -169,30 +193,43 @@ void MiniSync::SyncNode::sync()
     while (running)
     {
         beacon.set_seq(seq);
+        msg.set_allocated_beacon(&beacon);
+
+        LOG_F(INFO, "Sending beacon (SEQ %d).", seq);
 
         try
         {
             // nullptr since we should already be connected
-            msg.set_allocated_beacon(&beacon);
             to = this->send_message(msg, nullptr);
 
             // wait for reply
             tr = this->recv_message(msg, nullptr);
 
-            if (!msg.has_beacon_r()) continue;
+            if (!msg.has_beacon_r())
+            {
+                LOG_F(WARNING, "Got a message from peer which was not a beacon reply.");
+                continue;
+            }
 
             const MiniSync::Protocol::BeaconReply& reply = msg.beacon_r();
 
             // ignore out-of-order replies
-            if (beacon.seq() != seq) continue;
+            if (beacon.seq() != seq)
+            {
+                LOG_F(WARNING, "Beacon reply was out of order, ignoring...");
+                continue;
+            }
 
             tbr = reply.beacon_recv_time();
             tbt = reply.reply_send_time();
 
+            LOG_F(INFO, "Timestamps:\nto=\t%ld\ntbr=\t%ld\ntbt=\t%ld\ntr=\t%ld", to, tbr, tbt, tr);
+
             this->algo.addDataPoint(to, tbr, tr);
             this->algo.addDataPoint(to, tbt, tr);
 
-            // TODO do something with the time?
+            LOG_F(INFO, "Current adjusted timestamp: %ld", algo.getCurrentTimeNanoSeconds());
+            LOG_F(INFO, "Drift: %f | Offset: %ld", algo.getDrift(), algo.getOffsetNanoSeconds());
             seq++;
             msg.Clear();
             beacon.Clear();
@@ -230,6 +267,7 @@ peer(peer),
 peer_port(peer_port),
 peer_addr(SOCKADDR{})
 {
+    LOG_F(INFO, "Initializing SyncNode.");
     // set up peer addr
     memset(&this->peer_addr, 0, sizeof(SOCKADDR));
 
@@ -241,7 +279,8 @@ peer_addr(SOCKADDR{})
     struct timeval read_timeout{0x00};
     read_timeout.tv_sec = 0;
     read_timeout.tv_usec = MiniSync::SyncNode::RD_TIMEOUT_USEC;
-    setsockopt(this->sock_fd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout));
+    CHECK_EQ_F(setsockopt(this->sock_fd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout)), 0,
+               "Failed setting SO_RCVTIMEO option for socket.");
 }
 
 /*
@@ -267,9 +306,16 @@ void MiniSync::ReferenceNode::serve()
     while (listening)
     {
         // timestamp reception
+        LOG_F(INFO, "Listening for incoming beacons.");
         try
         {
             recv_time_ns = this->recv_message(incoming, nullptr);
+        }
+        catch (MiniSync::Exceptions::DeserializeMsgException& e)
+        {
+            // could not parse incoming message, just retry
+            LOG_F(WARNING, "Could not deserialize incoming message, retrying...");
+            continue;
         }
         catch (std::exception& e)
         {
@@ -286,11 +332,14 @@ void MiniSync::ReferenceNode::serve()
                 reply.set_seq(beacon.seq());
                 reply.set_beacon_recv_time(recv_time_ns);
 
+                LOG_F(INFO, "Received a beacon (SEQ %u).", beacon.seq());
+
                 outgoing.set_allocated_beacon_r(&reply);
                 reply.set_reply_send_time(Node::current_time_ns());
 
                 try
                 {
+                    LOG_F(INFO, "Replying to beacon.");
                     this->send_message(outgoing, nullptr);
                 }
                 catch (std::exception& e)
@@ -307,6 +356,7 @@ void MiniSync::ReferenceNode::serve()
             case Protocol::MiniSyncMsg::kGoodbye:
             {
                 // got goodbye, reply and shutdown
+                LOG_F(WARNING, "Got shutdown request.");
                 MiniSync::Protocol::GoodByeReply greply{};
                 outgoing.set_allocated_goodbye_r(&greply);
                 this->send_message(outgoing, nullptr);
@@ -338,9 +388,16 @@ void MiniSync::ReferenceNode::wait_for_handshake()
     while (listening)
     {
         // wait for handshake
+        LOG_F(INFO, "Waiting for incoming handshake requests.");
         try
         {
             this->recv_message(incoming, &reply_to);
+        }
+        catch (MiniSync::Exceptions::DeserializeMsgException& e)
+        {
+            // could not parse incoming message, just retry
+            LOG_F(WARNING, "Could not deserialize incoming message, retrying...");
+            continue;
         }
         catch (std::exception& e)
         {
@@ -352,17 +409,28 @@ void MiniSync::ReferenceNode::wait_for_handshake()
         {
             case Protocol::MiniSyncMsg::kHandshake:
             {
+                LOG_F(INFO, "Received handshake request.");
                 using ReplyStatus = MiniSync::Protocol::HandshakeReply_Status;
                 const auto& handshake = incoming.handshake();
 
                 if (Protocol::VERSION_MAJOR != handshake.version_major() ||
                     Protocol::VERSION_MINOR != handshake.version_minor())
+                {
+                    LOG_F(WARNING, "Handshake: Version mismatch.");
+                    LOG_F(WARNING, "Local version: %d.%d - Remote version: %d.%d",
+                          Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
+                          handshake.version_major(), handshake.version_minor());
                     reply.set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
+                }
                 else if (handshake.mode() == this->mode)
+                {
+                    LOG_F(WARNING, "Handshake: Mode mismatch.");
                     reply.set_status(ReplyStatus::HandshakeReply_Status_MODE_MISMATCH);
+                }
                 else
                 {
                     // everything is ok, let's "connect"
+                    LOG_F(INFO, "Handshake successful.");
                     reply.set_status(ReplyStatus::HandshakeReply_Status_SUCCESS);
                     // UDP is connectionless, this is merely to store the address of the client and "fake" a connection
                     connect(this->sock_fd, (struct sockaddr*) &reply_to, reply_to_len);
@@ -374,6 +442,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                 try
                 {
                     this->send_message(outgoing, &reply_to);
+                    // TODO: verify the handshake is received??
                 }
                 catch (std::exception& e)
                 {
@@ -396,4 +465,10 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                 break;
         }
     }
+}
+
+MiniSync::ReferenceNode::ReferenceNode(uint16_t bind_port) :
+Node(bind_port, MiniSync::Protocol::NodeMode::REFERENCE)
+{
+    LOG_F(INFO, "Initializing ReferenceNode.");
 }

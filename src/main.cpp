@@ -42,13 +42,13 @@ int main(int argc, char* argv[])
 
     if (modes.front()->get_name() == "REF_MODE")
     {
-        LOG_F(INFO, "Started node in REFERENCE mode.");
+        // LOG_F(INFO, "Started node in REFERENCE mode.");
         MiniSync::ReferenceNode node{bind_port};
         node.run();
     }
     else if (modes.front()->get_name() == "SYNC_MODE")
     {
-        LOG_F(INFO, "Started node in SYNCHRONIZATION mode.");
+        // LOG_F(INFO, "Started node in SYNCHRONIZATION mode.");
         MiniSync::TinySyncAlgorithm algo{};
         MiniSync::SyncNode node{bind_port, peer, port, algo};
         node.run();

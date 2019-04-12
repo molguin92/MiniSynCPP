@@ -40,9 +40,7 @@ namespace MiniSync
     class ReferenceNode : Node
     {
     public:
-        explicit ReferenceNode(uint16_t bind_port) :
-        Node(bind_port, MiniSync::Protocol::NodeMode::REFERENCE)
-        {};
+        explicit ReferenceNode(uint16_t bind_port);
         ~ReferenceNode() = default;
 
         void run() final;
