@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.10)
 project(MiniSynCPP)
 set(CMAKE_CXX_STANDARD 11)
 include(ExternalProject REQUIRED)
@@ -9,6 +9,7 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 
 set(PROTOBUF_TAR_GZ https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protobuf-cpp-3.7.1.tar.gz)
+set(PROTO_LIB ${CMAKE_CURRENT_BINARY_DIR}/lib/static/libprotobufd.a)
 ExternalProject_Add(
         protobuf-external
         PREFIX protobuf
@@ -21,9 +22,12 @@ ExternalProject_Add(
         "-Dprotobuf_WITH_ZLIB:BOOL=OFF"
         "-DCMAKE_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}"
         "-Dprotobuf_BUILD_SHARED_LIBS:BOOL=OFF"
+        "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/lib"
+        "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/lib/static"
         # other project specific parameters
         SOURCE_SUBDIR cmake
         BUILD_ALWAYS 1
+        BUILD_BYPRODUCTS ${PROTO_LIB}
         STEP_TARGETS build
         INSTALL_COMMAND ""
 )
@@ -31,18 +35,16 @@ ExternalProject_Add(
 ExternalProject_Get_Property(protobuf-external source_dir)
 
 include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR})
-link_directories(${CMAKE_CURRENT_BINARY_DIR}/protobuf lib lib/static)
+link_directories(lib lib/static ${CMAKE_CURRENT_BINARY_DIR})
 
 set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protobuf/protoc)
 set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.h)
-set(PROTO_LIB ${CMAKE_CURRENT_BINARY_DIR}/protobuf/libprotobufd.a)
 
 # generate protobuf definitions
 add_custom_command(OUTPUT ${PROTO_SRC}
         COMMAND ${PROTOC_PATH} protocol.proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS protobuf-external
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/net)
-add_custom_command(OUTPUT ${PROTO_LIB} DEPENDS protobuf-external)
 
 # protobuf_generate_cpp(PROTO_SRC PROTO_HDR src/net/protocol.proto)
 add_executable(MiniSynCPP
