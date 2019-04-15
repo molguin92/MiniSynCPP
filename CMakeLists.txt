@@ -35,12 +35,14 @@ link_directories(${CMAKE_CURRENT_BINARY_DIR}/protobuf lib lib/static)
 
 set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protobuf/protoc)
 set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.h)
+set(PROTO_LIB ${CMAKE_CURRENT_BINARY_DIR}/protobuf/libprotobufd.a)
 
 # generate protobuf definitions
 add_custom_command(OUTPUT ${PROTO_SRC}
         COMMAND ${PROTOC_PATH} protocol.proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
         DEPENDS protobuf-external
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/net)
+add_custom_command(OUTPUT ${PROTO_LIB} DEPENDS protobuf-external)
 
 # protobuf_generate_cpp(PROTO_SRC PROTO_HDR src/net/protocol.proto)
 add_executable(MiniSynCPP
@@ -56,6 +58,6 @@ add_dependencies(MiniSynCPP protobuf-external)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_END_STATIC 1)
 
-target_link_libraries(MiniSynCPP
-        dl ${CMAKE_THREAD_LIBS_INIT}
-        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/libprotobufd.a) # let's be very specific with our protobuf lib
+target_link_libraries(MiniSynCPP dl ${CMAKE_THREAD_LIBS_INIT} ${PROTO_LIB}) # let's be very specific with our
+protobuf
+lib
