@@ -9,25 +9,24 @@ set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 
 set(PROTOBUF_TAR_GZ https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protobuf-cpp-3.7.1.tar.gz)
-set(PROTO_LIB ${CMAKE_CURRENT_BINARY_DIR}/lib/static/libprotobufd.a)
 ExternalProject_Add(
         protobuf-external
         PREFIX protobuf
         URL ${PROTOBUF_TAR_GZ}
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/protobuf
         CMAKE_CACHE_ARGS
-        "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
+        # "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
+        "-DCMAKE_BUILD_TYPE:STRING=RELEASE"
         "-Dprotobuf_BUILD_TESTS:BOOL=OFF"
         "-Dprotobuf_BUILD_EXAMPLES:BOOL=OFF"
         "-Dprotobuf_WITH_ZLIB:BOOL=OFF"
         "-DCMAKE_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}"
         "-Dprotobuf_BUILD_SHARED_LIBS:BOOL=OFF"
-        "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/lib"
-        "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/lib/static"
+        "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib"
+        "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static"
         # other project specific parameters
         SOURCE_SUBDIR cmake
         BUILD_ALWAYS 1
-        BUILD_BYPRODUCTS ${PROTO_LIB}
         STEP_TARGETS build
         INSTALL_COMMAND ""
 )
@@ -35,7 +34,9 @@ ExternalProject_Add(
 ExternalProject_Get_Property(protobuf-external source_dir)
 
 include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR})
-link_directories(lib lib/static ${CMAKE_CURRENT_BINARY_DIR})
+link_directories(lib lib/static
+        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static)
 
 set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protobuf/protoc)
 set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.h)
@@ -60,5 +61,6 @@ add_dependencies(MiniSynCPP protobuf-external)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_END_STATIC 1)
 
-target_link_libraries(MiniSynCPP dl ${CMAKE_THREAD_LIBS_INIT} ${PROTO_LIB})
+target_link_libraries(MiniSynCPP dl ${CMAKE_THREAD_LIBS_INIT}
+        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static/libprotobuf.a)
 # be very specific with the protobuf lib
