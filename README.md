@@ -4,10 +4,11 @@ Reference implementation in C++11 of the MiniSync/TinySync time synchronization 
 Note that this implementation is still pretty naive and probably should not be used for anything critical (yet).
 
 ## Compilation
-Everything needed for compilation is included, and the only requirements are:
+The only requirements are:
 
 - CMAKE
 - C++11 Compiler (gcc, g++, clang).
+- Google Protobuf Libraries
 
 Compilation is then just a matter of running:
 ```bash
