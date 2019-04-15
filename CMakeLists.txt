@@ -58,6 +58,5 @@ add_dependencies(MiniSynCPP protobuf-external)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_END_STATIC 1)
 
-target_link_libraries(MiniSynCPP dl ${CMAKE_THREAD_LIBS_INIT} ${PROTO_LIB}) # let's be very specific with our
-protobuf
-lib
+target_link_libraries(MiniSynCPP dl ${CMAKE_THREAD_LIBS_INIT} ${PROTO_LIB})
+# be very specific with the protobuf lib
