@@ -31,7 +31,7 @@ ExternalProject_Add(
 ExternalProject_Get_Property(protobuf-external source_dir)
 
 include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR})
-link_directories(lib lib/static ${CMAKE_CURRENT_BINARY_DIR}/protobuf)
+link_directories(${CMAKE_CURRENT_BINARY_DIR}/protobuf lib lib/static)
 
 set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protobuf/protoc)
 set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.h)
@@ -52,7 +52,10 @@ add_executable(MiniSynCPP
         src/exception.cpp src/exception.h src/exception.cpp
         ${PROTO_SRC})
 
+add_dependencies(MiniSynCPP protobuf-external)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_END_STATIC 1)
 
-target_link_libraries(MiniSynCPP dl ${CMAKE_THREAD_LIBS_INIT} libprotobufd.a)
+target_link_libraries(MiniSynCPP
+        dl ${CMAKE_THREAD_LIBS_INIT}
+        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/libprotobufd.a) # let's be very specific with our protobuf lib
