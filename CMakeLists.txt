@@ -60,6 +60,7 @@ set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protoc/bin/protoc)
 set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.h)
 add_custom_command(OUTPUT ${PROTO_SRC}
         COMMAND ${PROTOC_PATH} protocol.proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
+        MAIN_DEPENDENCY ${PROJECT_SOURCE_DIR}/src/net/protocol.proto
         DEPENDS protoc
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/net)
 
