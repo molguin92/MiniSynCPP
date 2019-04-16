@@ -248,6 +248,7 @@ void MiniSync::SyncNode::sync()
             // ignore out-of-order replies
             if (reply.seq() != seq)
             {
+                // TODO: DO SOMETHING ABOUT OUT OF ORDER REPLIES
                 LOG_F(WARNING, "Beacon reply was out of order, ignoring...");
                 continue;
             }
