@@ -52,7 +52,7 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
     uint8_t reply_buf[out_sz];
     msg.SerializeToArray(reply_buf, out_sz);
 
-    DLOG_F(INFO, "Sending a message of size %ld bytes...", out_sz);
+    DLOG_F(INFO, "Sending a message of size %lu bytes...", out_sz);
 
     uint64_t timestamp = this->current_time_ns(); // timestamp BEFORE passing on to network stack
     if (sendto(this->sock_fd, reply_buf, out_sz, 0, dest, sizeof(*dest)) != out_sz)
@@ -61,7 +61,7 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
         throw MiniSync::Exceptions::SocketWriteException();
     }
 
-    DLOG_F(INFO, "Sent a message of size %ld bytes with timestamp %ld...", out_sz, timestamp);
+    DLOG_F(INFO, "Sent a message of size %lu bytes with timestamp %lu...", out_sz, timestamp);
     return timestamp;
 }
 
@@ -88,7 +88,7 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
 
     uint64_t timestamp = this->current_time_ns(); // timestamp after receiving whole message
 
-    DLOG_F(INFO, "Got a datagram at time %ld.", timestamp);
+    DLOG_F(INFO, "Got a datagram at time %lu.", timestamp);
     // deserialize buffer into a protobuf message
     if (!msg.ParseFromArray(buf, recv_sz))
     {
@@ -225,12 +225,12 @@ void MiniSync::SyncNode::sync()
             tbr = reply.beacon_recv_time();
             tbt = reply.reply_send_time();
 
-            LOG_F(INFO, "Timestamps:\nto=\t%ld\ntbr=\t%ld\ntbt=\t%ld\ntr=\t%ld", to, tbr, tbt, tr);
+            LOG_F(INFO, "Timestamps:\nto=\t%lu\ntbr=\t%lu\ntbt=\t%lu\ntr=\t%lu", to, tbr, tbt, tr);
 
             this->algo.addDataPoint(to, tbr, tr);
             this->algo.addDataPoint(to, tbt, tr);
 
-            LOG_F(INFO, "Current adjusted timestamp: %ld", algo.getCurrentTimeNanoSeconds());
+            LOG_F(INFO, "Current adjusted timestamp: %lu", algo.getCurrentTimeNanoSeconds());
             LOG_F(INFO, "Drift: %f | Offset: %ld", algo.getDrift(), algo.getOffsetNanoSeconds());
             seq++;
             msg.Clear();
