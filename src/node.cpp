@@ -27,9 +27,12 @@ bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode)
     this->local_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     this->local_addr.sin_port = htons(bind_port);
 
-    LOG_F(INFO, "Binding UDP socket to port %d", this->bind_port);
+    LOG_F(INFO, "Binding UDP socket to port %"
+    PRIu16
+    "", this->bind_port);
     CHECK_GE_F(bind(this->sock_fd, (struct sockaddr*) &this->local_addr, sizeof(this->local_addr)), 0,
-               "Failed to bind socket to UDP port %d", bind_port);
+               "Failed to bind socket to UDP port %"
+               PRIu16, bind_port);
 }
 
 uint64_t MiniSync::Node::current_time_ns()
@@ -52,7 +55,13 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
     uint8_t reply_buf[out_sz];
     msg.SerializeToArray(reply_buf, out_sz);
 
-    DLOG_F(INFO, "Sending a message of size %lu bytes...", out_sz);
+    DLOG_F(INFO, "Sending a message of size %"
+#ifdef __x86_64__
+    PRIu64
+#else
+    PRId32
+#endif
+    " bytes...", out_sz);
 
     uint64_t timestamp = this->current_time_ns(); // timestamp BEFORE passing on to network stack
     if (sendto(this->sock_fd, reply_buf, out_sz, 0, dest, sizeof(*dest)) != out_sz)
@@ -61,7 +70,15 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
         throw MiniSync::Exceptions::SocketWriteException();
     }
 
-    DLOG_F(INFO, "Sent a message of size %lu bytes with timestamp %lu...", out_sz, timestamp);
+    DLOG_F(INFO, "Sent a message of size %"
+#ifdef __x86_64__
+    PRIu64
+#else
+    PRId32
+#endif
+    " bytes with timestamp %"
+    PRIu64
+    "...", out_sz, timestamp);
     return timestamp;
 }
 
@@ -88,7 +105,15 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
 
     uint64_t timestamp = this->current_time_ns(); // timestamp after receiving whole message
 
-    DLOG_F(INFO, "Got %lu bytes of data at time %lu.", recv_sz, timestamp);
+    DLOG_F(INFO, "Got %"
+#ifdef __x86_64__
+    PRIu64
+#else
+    PRId32
+#endif
+    " bytes of data at time %"
+    PRIu64
+    ".", recv_sz, timestamp);
     // deserialize buffer into a protobuf message
     if (!msg.ParseFromArray(buf, recv_sz))
     {
@@ -122,7 +147,9 @@ void MiniSync::SyncNode::handshake()
     {
         try
         {
-            LOG_F(INFO, "Initializing handshake with peer %s:%d.", this->peer.c_str(), this->peer_port);
+            LOG_F(INFO, "Initializing handshake with peer %s:%"
+            PRIu16
+            ".", this->peer.c_str(), this->peer_port);
             this->send_message(msg, (struct sockaddr*) &this->peer_addr);
             // wait for handshake response
             this->recv_message(incoming, (struct sockaddr*) &this->peer_addr);
@@ -140,7 +167,8 @@ void MiniSync::SyncNode::handshake()
                 {
                     // if success, we can "connect" the socket and move on to actually synchronizing.
                     CHECK_GE_F(connect(this->sock_fd, (struct sockaddr*) &this->peer_addr, sizeof(this->peer_addr)), 0,
-                               "Failed connecting socket to peer %s:%d", this->peer.c_str(), this->peer_port);
+                               "Failed connecting socket to peer %s:%"
+                               PRIu16, this->peer.c_str(), this->peer_port);
                     success = true;
                     break;
                 }
@@ -197,7 +225,9 @@ void MiniSync::SyncNode::sync()
         beacon->set_seq(seq);
         msg.set_allocated_beacon(beacon);
 
-        LOG_F(INFO, "Sending beacon (SEQ %d).", seq);
+        LOG_F(INFO, "Sending beacon (SEQ %"
+        PRIu8
+        ").", seq);
 
         try
         {
@@ -230,8 +260,10 @@ void MiniSync::SyncNode::sync()
             this->algo.addDataPoint(to, tbr, tr);
             this->algo.addDataPoint(to, tbt, tr);
 
-            LOG_F(INFO, "Current adjusted timestamp: %lu", algo.getCurrentTimeNanoSeconds());
-            LOG_F(INFO, "Drift: %f | Offset: %ld", algo.getDrift(), algo.getOffsetNanoSeconds());
+            LOG_F(INFO, "Current adjusted timestamp: %"
+            PRIu64, algo.getCurrentTimeNanoSeconds());
+            LOG_F(INFO, "Drift: %f | Offset: %"
+            PRId64, algo.getDrift(), algo.getOffsetNanoSeconds());
             seq++;
             msg.Clear();
             // msg handles clearing beacon
@@ -332,7 +364,9 @@ void MiniSync::ReferenceNode::serve()
                 reply->set_seq(beacon.seq());
                 reply->set_beacon_recv_time(recv_time_ns);
 
-                LOG_F(INFO, "Received a beacon (SEQ %u).", beacon.seq());
+                LOG_F(INFO, "Received a beacon (SEQ %"
+                PRIu8
+                ").", beacon.seq());
 
                 outgoing.set_allocated_beacon_r(reply);
                 reply->set_reply_send_time(Node::current_time_ns());
@@ -417,7 +451,14 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                     Protocol::VERSION_MINOR != handshake.version_minor())
                 {
                     LOG_F(WARNING, "Handshake: Version mismatch.");
-                    LOG_F(WARNING, "Local version: %d.%d - Remote version: %d.%d",
+                    LOG_F(WARNING, "Local version: %"
+                    PRIu8
+                    ".%"
+                    PRIu8
+                    " - Remote version: %"
+                    PRIu8
+                    ".%"
+                    PRIu8,
                           Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
                           handshake.version_major(), handshake.version_minor());
                     reply->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);

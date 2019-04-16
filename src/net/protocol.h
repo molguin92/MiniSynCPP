@@ -8,7 +8,7 @@
 #ifndef MINISYNCPP_PROTOCOL_H
 #define MINISYNCPP_PROTOCOL_H
 
-#include <cstdint>
+#include <cinttypes>
 #include "protocol.pb.h"
 
 namespace MiniSync

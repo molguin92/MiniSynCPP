@@ -22,7 +22,7 @@ namespace MiniSync
     {
     protected:
         int sock_fd;
-        uint32_t bind_port;
+        uint16_t bind_port;
         SOCKADDR local_addr;
         const MiniSync::Protocol::NodeMode mode;
 
