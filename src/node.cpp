@@ -15,6 +15,12 @@
 #include <thread>
 #include "loguru/loguru.hpp"
 
+#ifdef __x86_64__
+#define PRISIZE_T PRIu64
+#else
+#define PRISIZE_T PRId32
+#endif
+
 MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
 bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode)
 {
@@ -56,11 +62,7 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
     msg.SerializeToArray(reply_buf, out_sz);
 
     DLOG_F(INFO, "Sending a message of size %"
-#ifdef __x86_64__
-    PRIu64
-#else
-    PRId32
-#endif
+    PRISIZE_T
     " bytes...", out_sz);
 
     uint64_t timestamp = this->current_time_ns(); // timestamp BEFORE passing on to network stack
@@ -71,11 +73,7 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
     }
 
     DLOG_F(INFO, "Sent a message of size %"
-#ifdef __x86_64__
-    PRIu64
-#else
-    PRId32
-#endif
+    PRISIZE_T
     " bytes with timestamp %"
     PRIu64
     "...", out_sz, timestamp);
@@ -106,11 +104,7 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
     uint64_t timestamp = this->current_time_ns(); // timestamp after receiving whole message
 
     DLOG_F(INFO, "Got %"
-#ifdef __x86_64__
-    PRIu64
-#else
-    PRId32
-#endif
+    PRISIZE_T
     " bytes of data at time %"
     PRIu64
     ".", recv_sz, timestamp);
