@@ -349,55 +349,44 @@ void MiniSync::ReferenceNode::serve()
             ABORT_F("%s", e.what());
         }
 
-        // TODO: change switch to if()?
         auto* reply = new MiniSync::Protocol::BeaconReply{};
-        switch (incoming.payload_case())
+        if (incoming.has_beacon())
         {
-            case Protocol::MiniSyncMsg::kBeacon:
+            // got beacon, so just reply
+            const MiniSync::Protocol::Beacon& beacon = incoming.beacon();
+            reply->set_seq(beacon.seq());
+            reply->set_beacon_recv_time(recv_time_ns);
+
+            LOG_F(INFO, "Received a beacon (SEQ %"
+            PRIu8
+            ").", beacon.seq());
+
+            outgoing.set_allocated_beacon_r(reply);
+            reply->set_reply_send_time(Node::current_time_ns());
+
+            try
             {
-                const MiniSync::Protocol::Beacon& beacon = incoming.beacon();
-                reply->set_seq(beacon.seq());
-                reply->set_beacon_recv_time(recv_time_ns);
-
-                LOG_F(INFO, "Received a beacon (SEQ %"
-                PRIu8
-                ").", beacon.seq());
-
-                outgoing.set_allocated_beacon_r(reply);
-                reply->set_reply_send_time(Node::current_time_ns());
-
-                try
-                {
-                    LOG_F(INFO, "Replying to beacon.");
-                    this->send_message(outgoing, nullptr);
-                }
-                catch (std::exception& e)
-                {
-                    // TODO: More finegrained handling.
-                    ABORT_F("%s", e.what());
-                }
-
-                // clean up after send
-                outgoing.Clear();
-                // no need to clear up reply, outgoing takes care of it
-                break;
-            }
-            case Protocol::MiniSyncMsg::kGoodbye:
-            {
-                // got goodbye, reply and shutdown
-                LOG_F(WARNING, "Got shutdown request.");
-                MiniSync::Protocol::GoodByeReply greply{};
-                outgoing.set_allocated_goodbye_r(&greply);
+                LOG_F(INFO, "Replying to beacon.");
                 this->send_message(outgoing, nullptr);
-                listening = false;
-                break;
             }
-            case Protocol::MiniSyncMsg::kHandshake:
-            case Protocol::MiniSyncMsg::kHandshakeR:
-            case Protocol::MiniSyncMsg::kBeaconR:
-            case Protocol::MiniSyncMsg::kGoodbyeR:
-            case Protocol::MiniSyncMsg::PAYLOAD_NOT_SET:
-                break;
+            catch (std::exception& e)
+            {
+                // TODO: More finegrained handling.
+                ABORT_F("%s", e.what());
+            }
+
+            // clean up after send
+            outgoing.Clear();
+            // no need to clear up reply, outgoing takes care of it
+        }
+        else if (incoming.has_goodbye())
+        {
+            // got goodbye, reply and shutdown
+            LOG_F(WARNING, "Got shutdown request.");
+            MiniSync::Protocol::GoodByeReply greply{};
+            outgoing.set_allocated_goodbye_r(&greply);
+            this->send_message(outgoing, nullptr);
+            listening = false;
         }
     }
 }
