@@ -432,74 +432,62 @@ void MiniSync::ReferenceNode::wait_for_handshake()
             // TODO: finegrained handling
             ABORT_F("%s", e.what());
         }
-        // TODO: condense switch into if()
+
         auto* reply = new MiniSync::Protocol::HandshakeReply{};
-        switch (incoming.payload_case())
+        if (incoming.has_handshake())
         {
-            case Protocol::MiniSyncMsg::kHandshake:
+            LOG_F(INFO, "Received handshake request.");
+            using ReplyStatus = MiniSync::Protocol::HandshakeReply_Status;
+            const auto& handshake = incoming.handshake();
+
+            if (Protocol::VERSION_MAJOR != handshake.version_major() ||
+                Protocol::VERSION_MINOR != handshake.version_minor())
             {
-                LOG_F(INFO, "Received handshake request.");
-                using ReplyStatus = MiniSync::Protocol::HandshakeReply_Status;
-                const auto& handshake = incoming.handshake();
-
-                if (Protocol::VERSION_MAJOR != handshake.version_major() ||
-                    Protocol::VERSION_MINOR != handshake.version_minor())
-                {
-                    LOG_F(WARNING, "Handshake: Version mismatch.");
-                    LOG_F(WARNING, "Local version: %"
-                    PRIu8
-                    ".%"
-                    PRIu8
-                    " - Remote version: %"
-                    PRIu8
-                    ".%"
-                    PRIu8,
-                          Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
-                          handshake.version_major(), handshake.version_minor());
-                    reply->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
-                }
-                else if (handshake.mode() == this->mode)
-                {
-                    LOG_F(WARNING, "Handshake: Mode mismatch.");
-                    reply->set_status(ReplyStatus::HandshakeReply_Status_MODE_MISMATCH);
-                }
-                else
-                {
-                    // everything is ok, let's "connect"
-                    LOG_F(INFO, "Handshake successful.");
-                    reply->set_status(ReplyStatus::HandshakeReply_Status_SUCCESS);
-                    // UDP is connectionless, this is merely to store the address of the client and "fake" a connection
-                    CHECK_GE_F(connect(this->sock_fd, &reply_to, reply_to_len), 0,
-                               "Call to connect failed. ERRNO: %s", strerror(errno));
-                    listening = false;
-                }
-
-                // reply is sent no matter what
-                outgoing.set_allocated_handshake_r(reply);
-                try
-                {
-                    this->send_message(outgoing, &reply_to);
-                    // TODO: verify the handshake is received??
-                }
-                catch (std::exception& e)
-                {
-                    // TODO: More finegrained handling.
-                    ABORT_F("%s", e.what());
-                }
-
-                // cleanup
-                outgoing.Clear();
-                // no need to clear reply, outgoing has ownership and will clear it
-                break;
+                LOG_F(WARNING, "Handshake: Version mismatch.");
+                LOG_F(WARNING, "Local version: %"
+                PRIu8
+                ".%"
+                PRIu8
+                " - Remote version: %"
+                PRIu8
+                ".%"
+                PRIu8,
+                      Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
+                      handshake.version_major(), handshake.version_minor());
+                reply->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
             }
-                // ignore all other messages
-            case Protocol::MiniSyncMsg::kHandshakeR:
-            case Protocol::MiniSyncMsg::kBeacon:
-            case Protocol::MiniSyncMsg::kBeaconR:
-            case Protocol::MiniSyncMsg::kGoodbye:
-            case Protocol::MiniSyncMsg::kGoodbyeR:
-            case Protocol::MiniSyncMsg::PAYLOAD_NOT_SET:
-                break;
+            else if (handshake.mode() == this->mode)
+            {
+                LOG_F(WARNING, "Handshake: Mode mismatch.");
+                reply->set_status(ReplyStatus::HandshakeReply_Status_MODE_MISMATCH);
+            }
+            else
+            {
+                // everything is ok, let's "connect"
+                LOG_F(INFO, "Handshake successful.");
+                reply->set_status(ReplyStatus::HandshakeReply_Status_SUCCESS);
+                // UDP is connectionless, this is merely to store the address of the client and "fake" a connection
+                CHECK_GE_F(connect(this->sock_fd, &reply_to, reply_to_len), 0,
+                           "Call to connect failed. ERRNO: %s", strerror(errno));
+                listening = false;
+            }
+
+            // reply is sent no matter what
+            outgoing.set_allocated_handshake_r(reply);
+            try
+            {
+                this->send_message(outgoing, &reply_to);
+                // TODO: verify the handshake is received??
+            }
+            catch (std::exception& e)
+            {
+                // TODO: More finegrained handling.
+                ABORT_F("%s", e.what());
+            }
+
+            // cleanup
+            outgoing.Clear();
+            // no need to clear reply, outgoing has ownership and will clear it
         }
     }
 }
