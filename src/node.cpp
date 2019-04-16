@@ -200,6 +200,7 @@ void MiniSync::SyncNode::handshake()
         catch (MiniSync::Exceptions::SerializeMsgException& e)
         {
             ABORT_F("%s", e.what());
+// TODO: fix exceptions for clean shutdown
         }
     }
 }
@@ -280,6 +281,7 @@ void MiniSync::SyncNode::sync()
         catch (std::exception& e)
         {
             ABORT_F("%s", e.what());
+            // TODO: fix exceptions for clean shutdown
         }
     }
 }
