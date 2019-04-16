@@ -88,7 +88,7 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
 
     uint64_t timestamp = this->current_time_ns(); // timestamp after receiving whole message
 
-    DLOG_F(INFO, "Got a datagram at time %lu.", timestamp);
+    DLOG_F(INFO, "Got %lu bytes of data at time %lu.", recv_sz, timestamp);
     // deserialize buffer into a protobuf message
     if (!msg.ParseFromArray(buf, recv_sz))
     {
