@@ -66,7 +66,7 @@ add_custom_command(OUTPUT ${PROTO_SRC}
 
 add_executable(MiniSynCPP
         src/main.cpp
-        src/minisync.cpp src/minisync.h
+        src/algorithms/minisync.cpp src/algorithms/minisync.h
         src/node.cpp src/node.h
         include/CLI11/CLI11.hpp
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github

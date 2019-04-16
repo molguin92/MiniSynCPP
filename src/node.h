@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string>
-#include "minisync.h"
+#include "algorithms/minisync.h"
 #include <protocol.pb.h>
 
 namespace MiniSync
