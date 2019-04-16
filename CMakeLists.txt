@@ -8,7 +8,12 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 
-set(PROTOBUF_TAR_GZ https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protobuf-cpp-3.7.1.tar.gz)
+set(GITHUB_URL https://github.com/protocolbuffers/protobuf/releases/download)
+
+set(PROTOBUF_VERSION "3.7.1")
+set(PROTOBUF_TAR_GZ "${GITHUB_URL}/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz")
+set(PROTOC_ARCHIVE "${GITHUB_URL}/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
+
 ExternalProject_Add(
         protobuf-external
         PREFIX protobuf
@@ -24,6 +29,7 @@ ExternalProject_Add(
         "-Dprotobuf_BUILD_SHARED_LIBS:BOOL=OFF"
         "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib"
         "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static"
+        "-Dprotobuf_BUILD_PROTOC_BINARIES:BOOL=OFF"
         # other project specific parameters
         SOURCE_SUBDIR cmake
         BUILD_ALWAYS 1
@@ -33,21 +39,30 @@ ExternalProject_Add(
 
 ExternalProject_Get_Property(protobuf-external source_dir)
 
+ExternalProject_Add(
+        protoc
+        URL ${PROTOC_ARCHIVE}
+        SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/protoc
+        CONFIGURE_COMMAND ""
+        BUILD_COMMAND ""
+        INSTALL_COMMAND ""
+        BUILD_ALWAYS 1
+        BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/protoc/bin/protoc
+)
+
 include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR})
 link_directories(lib lib/static
         ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib
         ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static)
 
-set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protobuf/protoc)
-set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.h)
-
 # generate protobuf definitions
+set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protoc/bin/protoc)
+set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.h)
 add_custom_command(OUTPUT ${PROTO_SRC}
         COMMAND ${PROTOC_PATH} protocol.proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
-        DEPENDS protobuf-external
+        DEPENDS protoc
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/net)
 
-# protobuf_generate_cpp(PROTO_SRC PROTO_HDR src/net/protocol.proto)
 add_executable(MiniSynCPP
         src/main.cpp
         src/minisync.cpp src/minisync.h
@@ -57,7 +72,7 @@ add_executable(MiniSynCPP
         src/exception.cpp src/exception.h src/exception.cpp
         ${PROTO_SRC})
 
-add_dependencies(MiniSynCPP protobuf-external)
+add_dependencies(MiniSynCPP protobuf-external protoc)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_END_STATIC 1)
 
