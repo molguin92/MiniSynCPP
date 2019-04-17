@@ -71,7 +71,7 @@ add_executable(MiniSynCPP
         include/CLI11/CLI11.hpp
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
         src/exception.cpp src/exception.h src/exception.cpp
-        ${PROTO_SRC})
+        ${PROTO_SRC} src/stats.cpp src/stats.h)
 
 add_dependencies(MiniSynCPP protobuf-external protoc)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)
