@@ -117,23 +117,25 @@ namespace MiniSync
          */
         uint64_t getCurrentTimeNanoSeconds();
 
-        ~SyncAlgorithm();
+        virtual ~SyncAlgorithm();
     };
 
     class TinySyncAlgorithm : public SyncAlgorithm
     {
     public:
         TinySyncAlgorithm() = default;
+        ~TinySyncAlgorithm() override = default;
     private:
-        void __recalculateEstimates(Point& n_low, Point& n_high) override;
+        void __recalculateEstimates(Point& n_low, Point& n_high) final;
     };
 
     class MiniSyncAlgorithm : public SyncAlgorithm
     {
     public:
         MiniSyncAlgorithm() = default;
+        ~MiniSyncAlgorithm() override = default;
     private:
-        void __recalculateEstimates(Point& n_low, Point& n_high) override;
+        void __recalculateEstimates(Point& n_low, Point& n_high) final;
     };
 }
 

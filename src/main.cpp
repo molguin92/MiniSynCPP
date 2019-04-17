@@ -9,11 +9,25 @@
 #include "CLI11/CLI11.hpp"
 #include "loguru/loguru.hpp"
 #include "node.h"
+#include "exception.h"
+#include <memory>
+
+MiniSync::Node* node = nullptr;
+
+void sig_handler(int)
+{
+    if (node != nullptr)
+        node->shut_down();
+    else exit(0);
+}
 
 int main(int argc, char* argv[])
 {
     loguru::g_stderr_verbosity = loguru::Verbosity_ERROR; // set default verbosity to ERROR or FATAL
     loguru::init(argc, argv); // parse -v flags
+
+    signal(SIGINT, sig_handler); // override logurus signal handlers
+
     std::string peer;
     uint16_t port;
     uint16_t bind_port;
@@ -43,19 +57,30 @@ int main(int argc, char* argv[])
     if (modes.front()->get_name() == "REF_MODE")
     {
         // LOG_F(INFO, "Started node in REFERENCE mode.");
-        MiniSync::ReferenceNode node{bind_port};
-        node.run();
+        // MiniSync::ReferenceNode node{bind_port};
+        node = new MiniSync::ReferenceNode{bind_port};
     }
     else if (modes.front()->get_name() == "SYNC_MODE")
     {
         // LOG_F(INFO, "Started node in SYNCHRONIZATION mode.");
-        MiniSync::TinySyncAlgorithm algo{};
-        MiniSync::SyncNode node{bind_port, peer, port, algo};
-        node.run();
+
+        node = new MiniSync::SyncNode(bind_port, peer, port,
+                                      std::unique_ptr<MiniSync::SyncAlgorithm>(new MiniSync::TinySyncAlgorithm()));
     }
     else
         ABORT_F("Invalid mode specified for application - THIS SHOULD NEVER HAPPEN?");
 
+    try
+    {
+        node->run();
+    }
+    catch (std::exception& e)
+    {
+        LOG_F(ERROR, "%s", e.what());
+        node->shut_down();
+    }
+
+    delete (node);
     return 0;
 }
 

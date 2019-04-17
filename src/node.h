@@ -25,9 +25,9 @@ namespace MiniSync
         uint16_t bind_port;
         SOCKADDR local_addr;
         const MiniSync::Protocol::NodeMode mode;
+        std::atomic_bool running;
 
         Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode);
-        ~Node();
 
         static uint64_t current_time_ns();
         uint64_t send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest);
@@ -35,13 +35,15 @@ namespace MiniSync
 
     public:
         virtual void run() = 0;
+        virtual void shut_down();
+        virtual ~Node();
     };
 
-    class ReferenceNode : Node
+    class ReferenceNode : public Node
     {
     public:
         explicit ReferenceNode(uint16_t bind_port);
-        ~ReferenceNode() = default;
+        ~ReferenceNode() override = default;
 
         void run() final;
 
@@ -50,22 +52,24 @@ namespace MiniSync
         void wait_for_handshake();
     };
 
-    class SyncNode : Node
+    class SyncNode : public Node
     {
     private:
         const std::string& peer;
         const uint16_t peer_port;
         SOCKADDR peer_addr;
-        MiniSync::SyncAlgorithm& algo;
+        std::unique_ptr<MiniSync::SyncAlgorithm> algo;
         void handshake();
         void sync();
 
     public:
         static const uint32_t RD_TIMEOUT_USEC = 100000; // 100 ms
 
-        SyncNode(uint16_t bind_port, std::string& peer, uint16_t peer_port, MiniSync::SyncAlgorithm& sync_algo);
-
-        ~SyncNode() = default;
+        SyncNode(uint16_t bind_port,
+                 std::string& peer,
+                 uint16_t peer_port,
+                 std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo);
+        ~SyncNode() override = default;
 
         void run() final;
     };

@@ -22,7 +22,7 @@
 #endif
 
 MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
-bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode)
+bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode), running(true)
 {
     this->sock_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     int enable = 1;
@@ -51,8 +51,11 @@ uint64_t MiniSync::Node::current_time_ns()
 MiniSync::Node::~Node()
 {
     // close the socket on destruction
-    shutdown(this->sock_fd, SHUT_RDWR);
-    close(this->sock_fd);
+    LOG_F(WARNING, "Shutting down, bye bye!");
+    if (this->running.load())
+        this->shut_down();
+    // shutdown(this->sock_fd, SHUT_RDWR);
+    // close(this->sock_fd);
 }
 
 uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest)
@@ -117,6 +120,14 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
     return timestamp;
 }
 
+void MiniSync::Node::shut_down()
+{
+    // force clean shut down
+    this->running.store(false);
+    shutdown(this->sock_fd, SHUT_RDWR);
+    close(this->sock_fd);
+}
+
 void MiniSync::SyncNode::run()
 {
     this->handshake();
@@ -136,8 +147,7 @@ void MiniSync::SyncNode::handshake()
     msg.set_allocated_handshake(handshake);
 
     MiniSync::Protocol::MiniSyncMsg incoming{};
-    bool success = false;
-    while (!success)
+    while (this->running.load())
     {
         try
         {
@@ -163,28 +173,21 @@ void MiniSync::SyncNode::handshake()
                     CHECK_GE_F(connect(this->sock_fd, (struct sockaddr*) &this->peer_addr, sizeof(this->peer_addr)), 0,
                                "Failed connecting socket to peer %s:%"
                                PRIu16, this->peer.c_str(), this->peer_port);
-                    success = true;
-                    break;
+                    return;
                 }
 
                 case Protocol::HandshakeReply_Status_VERSION_MISMATCH:
-                    ABORT_F("Handshake failed: version mismatch.");
+                    LOG_F(ERROR, "Handshake failed: version mismatch.");
                 case Protocol::HandshakeReply_Status_MODE_MISMATCH:
-                    ABORT_F("Handshake failed: Mode mismatch between the nodes.");
+                    LOG_F(ERROR, "Handshake failed: Mode mismatch between the nodes.");
                 case Protocol::HandshakeReply_Status_HandshakeReply_Status_INT_MIN_SENTINEL_DO_NOT_USE_:
                 case Protocol::HandshakeReply_Status_HandshakeReply_Status_INT_MAX_SENTINEL_DO_NOT_USE_:
                 case Protocol::HandshakeReply_Status_ERROR:
-                    ABORT_F("Handshake failed with unspecified error!");
+                    LOG_F(ERROR, "Handshake failed with unspecified error!");
+                    this->running.store(false);
             }
         }
-        catch (MiniSync::Exceptions::SocketWriteException& e)
-        {
-            ABORT_F("%s", e.what());
-        }
-        catch (MiniSync::Exceptions::SocketReadException& e)
-        {
-            ABORT_F("%s", e.what());
-        }
+            // only catch expected exceptions, the rest we leave to the main code
         catch (MiniSync::Exceptions::TimeoutException& e)
         {
             // if timed out, repeat!
@@ -197,11 +200,6 @@ void MiniSync::SyncNode::handshake()
             LOG_F(INFO, "Failed to deserialize incoming message, retrying...");
             continue;
         }
-        catch (MiniSync::Exceptions::SerializeMsgException& e)
-        {
-            ABORT_F("%s", e.what());
-// TODO: fix exceptions for clean shutdown
-        }
     }
 }
 
@@ -209,12 +207,11 @@ void MiniSync::SyncNode::sync()
 {
     // send sync beacons and wait for timestamps
     MiniSync::Protocol::MiniSyncMsg msg{};
-    bool running = true;
 
     uint64_t to, tbr, tbt, tr;
     uint8_t seq = 0;
 
-    while (running)
+    while (this->running.load())
     {
         auto* beacon = new MiniSync::Protocol::Beacon{};
         beacon->set_seq(seq);
@@ -253,19 +250,20 @@ void MiniSync::SyncNode::sync()
 
             LOG_F(INFO, "Timestamps:\nto=\t%lu\ntbr=\t%lu\ntbt=\t%lu\ntr=\t%lu", to, tbr, tbt, tr);
 
-            this->algo.addDataPoint(to, tbr, tr);
-            this->algo.addDataPoint(to, tbt, tr);
+            this->algo->addDataPoint(to, tbr, tr);
+            this->algo->addDataPoint(to, tbt, tr);
 
             LOG_F(INFO, "Current adjusted timestamp: %"
-            PRIu64, algo.getCurrentTimeNanoSeconds());
+            PRIu64, algo->getCurrentTimeNanoSeconds());
             LOG_F(INFO, "Drift: %f | Offset: %"
-            PRId64, algo.getDrift(), algo.getOffsetNanoSeconds());
+            PRId64, algo->getDrift(), algo->getOffsetNanoSeconds());
             seq++;
             msg.Clear();
             // msg handles clearing beacon
 
             std::this_thread::sleep_for(std::chrono::milliseconds(100)); // TODO: parameterize
         }
+            // only catch exceptions that we can work with
         catch (MiniSync::Exceptions::TimeoutException& e)
         {
             // timed out, retry sending beacon
@@ -278,20 +276,15 @@ void MiniSync::SyncNode::sync()
             LOG_F(WARNING, "Could not deserialize incoming message, retrying...");
             continue;
         }
-        catch (std::exception& e)
-        {
-            ABORT_F("%s", e.what());
-            // TODO: fix exceptions for clean shutdown
-        }
     }
 }
 
 MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              std::string& peer,
                              uint16_t peer_port,
-                             MiniSync::SyncAlgorithm& sync_algo) :
+                             std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo) :
 Node(bind_port, MiniSync::Protocol::NodeMode::SYNC),
-algo(sync_algo),
+algo(std::move(sync_algo)), // take ownership of algorithm
 peer(peer),
 peer_port(peer_port),
 peer_addr(SOCKADDR{})
@@ -330,65 +323,51 @@ void MiniSync::ReferenceNode::serve()
     MiniSync::Protocol::MiniSyncMsg outgoing{};
 
     // wait for beacons
-    bool listening = true;
-    while (listening)
+    while (this->running.load())
     {
         // timestamp reception
         LOG_F(INFO, "Listening for incoming beacons.");
         try
         {
             recv_time_ns = this->recv_message(incoming, nullptr);
-        }
-        catch (MiniSync::Exceptions::DeserializeMsgException& e)
-        {
-            // could not parse incoming message, just retry
-            LOG_F(WARNING, "Could not deserialize incoming message, retrying...");
-            continue;
-        }
-        catch (std::exception& e)
-        {
-            // TODO: More finegrained handling.
-            ABORT_F("%s", e.what());
-        }
 
-        auto* reply = new MiniSync::Protocol::BeaconReply{};
-        if (incoming.has_beacon())
-        {
-            // got beacon, so just reply
-            const MiniSync::Protocol::Beacon& beacon = incoming.beacon();
-            reply->set_seq(beacon.seq());
-            reply->set_beacon_recv_time(recv_time_ns);
-
-            LOG_F(INFO, "Received a beacon (SEQ %"
-            PRIu8
-            ").", beacon.seq());
-
-            outgoing.set_allocated_beacon_r(reply);
-            reply->set_reply_send_time(Node::current_time_ns());
-
-            try
+            if (incoming.has_beacon())
             {
+                // got beacon, so just reply
+                auto* reply = new MiniSync::Protocol::BeaconReply{};
+                const MiniSync::Protocol::Beacon& beacon = incoming.beacon();
+                reply->set_seq(beacon.seq());
+                reply->set_beacon_recv_time(recv_time_ns);
+
+                LOG_F(INFO, "Received a beacon (SEQ %"
+                PRIu8
+                ").", beacon.seq());
+
+                outgoing.set_allocated_beacon_r(reply);
+                reply->set_reply_send_time(Node::current_time_ns());
+
                 LOG_F(INFO, "Replying to beacon.");
                 this->send_message(outgoing, nullptr);
             }
-            catch (std::exception& e)
+            else if (incoming.has_goodbye())
             {
-                // TODO: More finegrained handling.
-                ABORT_F("%s", e.what());
+                // got goodbye, reply and shutdown
+                LOG_F(WARNING, "Got shutdown request.");
+                auto* greply = new MiniSync::Protocol::GoodByeReply{};
+                outgoing.set_allocated_goodbye_r(greply);
+                this->send_message(outgoing, nullptr);
+                this->running.store(false);
             }
 
             // clean up after send
             outgoing.Clear();
             // no need to clear up reply, outgoing takes care of it
         }
-        else if (incoming.has_goodbye())
+        catch (MiniSync::Exceptions::DeserializeMsgException& e)
         {
-            // got goodbye, reply and shutdown
-            LOG_F(WARNING, "Got shutdown request.");
-            MiniSync::Protocol::GoodByeReply greply{};
-            outgoing.set_allocated_goodbye_r(&greply);
-            this->send_message(outgoing, nullptr);
-            listening = false;
+            // could not parse incoming message, just retry
+            LOG_F(WARNING, "Could not deserialize incoming message, retrying...");
+            continue;
         }
     }
 }
@@ -404,81 +383,67 @@ void MiniSync::ReferenceNode::wait_for_handshake()
 
     // discard anything that is not a handshake request
     bool listening = true;
-    while (listening)
+    while (listening && this->running.load())
     {
         // wait for handshake
         LOG_F(INFO, "Waiting for incoming handshake requests.");
         try
         {
             this->recv_message(incoming, &reply_to);
+            if (incoming.has_handshake())
+            {
+                auto* reply = new MiniSync::Protocol::HandshakeReply{};
+                LOG_F(INFO, "Received handshake request.");
+                using ReplyStatus = MiniSync::Protocol::HandshakeReply_Status;
+                const auto& handshake = incoming.handshake();
+
+                if (Protocol::VERSION_MAJOR != handshake.version_major() ||
+                    Protocol::VERSION_MINOR != handshake.version_minor())
+                {
+                    LOG_F(WARNING, "Handshake: Version mismatch.");
+                    LOG_F(WARNING, "Local version: %"
+                    PRIu8
+                    ".%"
+                    PRIu8
+                    " - Remote version: %"
+                    PRIu8
+                    ".%"
+                    PRIu8,
+                          Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
+                          handshake.version_major(), handshake.version_minor());
+                    reply->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
+                }
+                else if (handshake.mode() == this->mode)
+                {
+                    LOG_F(WARNING, "Handshake: Mode mismatch.");
+                    reply->set_status(ReplyStatus::HandshakeReply_Status_MODE_MISMATCH);
+                }
+                else
+                {
+                    // everything is ok, let's "connect"
+                    LOG_F(INFO, "Handshake successful.");
+                    reply->set_status(ReplyStatus::HandshakeReply_Status_SUCCESS);
+                    // UDP is connectionless, this is merely to store the address of the client and "fake" a connection
+                    CHECK_GE_F(connect(this->sock_fd, &reply_to, reply_to_len), 0,
+                               "Call to connect failed. ERRNO: %s", strerror(errno));
+                    listening = false;
+                }
+
+                // reply is sent no matter what
+                outgoing.set_allocated_handshake_r(reply);
+                this->send_message(outgoing, &reply_to);
+                // TODO: verify the handshake is received??
+
+                // cleanup
+                outgoing.Clear();
+                // no need to clear reply, outgoing has ownership and will clear it
+            }
         }
         catch (MiniSync::Exceptions::DeserializeMsgException& e)
         {
             // could not parse incoming message, just retry
             LOG_F(WARNING, "Could not deserialize incoming message, retrying...");
             continue;
-        }
-        catch (std::exception& e)
-        {
-            // TODO: finegrained handling
-            ABORT_F("%s", e.what());
-        }
-
-        auto* reply = new MiniSync::Protocol::HandshakeReply{};
-        if (incoming.has_handshake())
-        {
-            LOG_F(INFO, "Received handshake request.");
-            using ReplyStatus = MiniSync::Protocol::HandshakeReply_Status;
-            const auto& handshake = incoming.handshake();
-
-            if (Protocol::VERSION_MAJOR != handshake.version_major() ||
-                Protocol::VERSION_MINOR != handshake.version_minor())
-            {
-                LOG_F(WARNING, "Handshake: Version mismatch.");
-                LOG_F(WARNING, "Local version: %"
-                PRIu8
-                ".%"
-                PRIu8
-                " - Remote version: %"
-                PRIu8
-                ".%"
-                PRIu8,
-                      Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
-                      handshake.version_major(), handshake.version_minor());
-                reply->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
-            }
-            else if (handshake.mode() == this->mode)
-            {
-                LOG_F(WARNING, "Handshake: Mode mismatch.");
-                reply->set_status(ReplyStatus::HandshakeReply_Status_MODE_MISMATCH);
-            }
-            else
-            {
-                // everything is ok, let's "connect"
-                LOG_F(INFO, "Handshake successful.");
-                reply->set_status(ReplyStatus::HandshakeReply_Status_SUCCESS);
-                // UDP is connectionless, this is merely to store the address of the client and "fake" a connection
-                CHECK_GE_F(connect(this->sock_fd, &reply_to, reply_to_len), 0,
-                           "Call to connect failed. ERRNO: %s", strerror(errno));
-                listening = false;
-            }
-
-            // reply is sent no matter what
-            outgoing.set_allocated_handshake_r(reply);
-            try
-            {
-                this->send_message(outgoing, &reply_to);
-                // TODO: verify the handshake is received??
-            }
-            catch (std::exception& e)
-            {
-                // TODO: More finegrained handling.
-                ABORT_F("%s", e.what());
-            }
-
-            // cleanup
-            outgoing.Clear();
-            // no need to clear reply, outgoing has ownership and will clear it
         }
     }
 }
