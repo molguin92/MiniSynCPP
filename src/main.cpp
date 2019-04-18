@@ -31,6 +31,7 @@ int main(int argc, char* argv[])
     std::string peer;
     uint16_t port;
     uint16_t bind_port;
+    std::string output_file;
 
     CLI::App app{"Standalone demo implementation of the Tiny/MiniSync time synchronization algorithms."};
 
@@ -45,6 +46,7 @@ int main(int argc, char* argv[])
     sync_mode->add_option<std::string>("ADDRESS", peer, "Address of peer to synchronize with.")->required(true);
     sync_mode->add_option<uint16_t>("PORT", port, "Target UDP Port on peer.")->required(true);
     sync_mode->add_option("-v", loguru::g_stderr_verbosity, "Set verbosity level.", true);
+    sync_mode->add_option("-o,--output", output_file, "Output stats to file.", false);
 
     app.fallthrough(true);
     app.require_subcommand(1, 1);
@@ -65,7 +67,8 @@ int main(int argc, char* argv[])
         // LOG_F(INFO, "Started node in SYNCHRONIZATION mode.");
 
         node = new MiniSync::SyncNode(bind_port, peer, port,
-                                      std::unique_ptr<MiniSync::SyncAlgorithm>(new MiniSync::TinySyncAlgorithm()));
+                                      std::unique_ptr<MiniSync::SyncAlgorithm>(new MiniSync::TinySyncAlgorithm()),
+                                      output_file);
     }
     else
         ABORT_F("Invalid mode specified for application - THIS SHOULD NEVER HAPPEN?");

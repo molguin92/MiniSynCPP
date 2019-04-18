@@ -1,3 +1,5 @@
+#include <utility>
+
 /*
 * Author: Manuel Olguín Muñoz <manuel@olguin.se>
 * 
@@ -253,10 +255,18 @@ void MiniSync::SyncNode::sync()
             this->algo->addDataPoint(to, tbr, tr);
             this->algo->addDataPoint(to, tbt, tr);
 
+            auto drift = algo->getDrift();
+            auto drift_error = algo->getDriftError();
+            auto offset = algo->getOffsetNanoSeconds();
+            auto offset_error = algo->getOffsetError();
+
             LOG_F(INFO, "Current adjusted timestamp: %"
             PRIu64, algo->getCurrentTimeNanoSeconds());
             LOG_F(INFO, "Drift: %f | Offset: %"
-            PRId64, algo->getDrift(), algo->getOffsetNanoSeconds());
+            PRId64, drift, offset);
+
+            stats.add_sample(offset, offset_error, drift, drift_error);
+
             seq++;
             msg.Clear();
             // msg handles clearing beacon
@@ -282,12 +292,15 @@ void MiniSync::SyncNode::sync()
 MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              std::string& peer,
                              uint16_t peer_port,
-                             std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo) :
+                             std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo,
+                             std::string stat_file_path) :
 Node(bind_port, MiniSync::Protocol::NodeMode::SYNC),
 algo(std::move(sync_algo)), // take ownership of algorithm
 peer(peer),
 peer_port(peer_port),
-peer_addr(SOCKADDR{})
+peer_addr({}),
+stats({}),
+stat_file_path(std::move(stat_file_path))
 {
     LOG_F(INFO, "Initializing SyncNode.");
     // set up peer addr
@@ -303,6 +316,14 @@ peer_addr(SOCKADDR{})
     read_timeout.tv_usec = MiniSync::SyncNode::RD_TIMEOUT_USEC;
     CHECK_EQ_F(setsockopt(this->sock_fd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout)), 0,
                "Failed setting SO_RCVTIMEO option for socket.");
+}
+
+MiniSync::SyncNode::~SyncNode()
+{
+    if (!this->stat_file_path.empty())
+    {
+        this->stats.write_csv(this->stat_file_path);
+    }
 }
 
 /*
@@ -398,7 +419,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                 const auto& handshake = incoming.handshake();
 
                 if (Protocol::VERSION_MAJOR != handshake.version_major() ||
-                    Protocol::VERSION_MINOR != handshake.version_minor())
+                Protocol::VERSION_MINOR != handshake.version_minor())
                 {
                     LOG_F(WARNING, "Handshake: Version mismatch.");
                     LOG_F(WARNING, "Local version: %"

@@ -7,8 +7,9 @@
 
 #include "stats.h"
 #include <fstream>
+#include <loguru/loguru.hpp>
 
-void MiniSynCPP::Stats::SyncStats::add_sample(int64_t offset, double offset_error, double drift, double drift_error)
+void MiniSync::Stats::SyncStats::add_sample(int64_t offset, double offset_error, double drift, double drift_error)
 {
     Sample n_sample;
     n_sample.offset = offset;
@@ -19,8 +20,9 @@ void MiniSynCPP::Stats::SyncStats::add_sample(int64_t offset, double offset_erro
     this->samples.push_back(n_sample);
 }
 
-uint32_t MiniSynCPP::Stats::SyncStats::write_csv(std::string path)
+uint32_t MiniSync::Stats::SyncStats::write_csv(const std::string& path)
 {
+    LOG_F(INFO, "Writing CSV file with synchronization stats.");
     int i = 0;
     try
     {
@@ -40,6 +42,7 @@ uint32_t MiniSynCPP::Stats::SyncStats::write_csv(std::string path)
     catch (...)
     {
         // in case of any error, (try to) remove the file
+        LOG_F(ERROR, "Writing to file failed!");
         remove(path.c_str());
         __throw_exception_again;
     }

@@ -12,7 +12,7 @@
 #include <vector>
 #include <string>
 
-namespace MiniSynCPP
+namespace MiniSync
 {
     namespace Stats
     {
@@ -40,7 +40,7 @@ namespace MiniSynCPP
             void add_sample(int64_t offset, double offset_error,
                             double drift, double drift_error);
 
-            uint32_t write_csv(std::string path);
+            uint32_t write_csv(const std::string& path);
 
 
         };

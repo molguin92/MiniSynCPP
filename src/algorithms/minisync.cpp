@@ -8,14 +8,24 @@
 #include <cstdlib>
 #include "minisync.h"
 
-float MiniSync::SyncAlgorithm::getDrift()
+double MiniSync::SyncAlgorithm::getDrift()
 {
     return this->currentDrift.value;
+}
+
+double MiniSync::SyncAlgorithm::getDriftError()
+{
+    return this->currentDrift.error;
 }
 
 int64_t MiniSync::SyncAlgorithm::getOffsetNanoSeconds()
 {
     return this->currentOffset.value;
+}
+
+double MiniSync::SyncAlgorithm::getOffsetError()
+{
+    return this->currentOffset.error;
 }
 
 uint64_t MiniSync::SyncAlgorithm::getCurrentTimeNanoSeconds()

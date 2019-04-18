@@ -105,12 +105,14 @@ namespace MiniSync
         /*
          * Get the current estimated relative clock drift.
          */
-        float getDrift();
+        double getDrift();
+        double getDriftError();
 
         /*
          * Get the current estimated relative clock offset in nanoseconds.
          */
         int64_t getOffsetNanoSeconds();
+        double getOffsetError();
 
         /*
          * Get the current POSIX timestamp in nanoseconds corrected using the estimated relative clock drift and offset.

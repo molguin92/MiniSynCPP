@@ -13,6 +13,7 @@
 #include <string>
 #include "algorithms/minisync.h"
 #include <protocol.pb.h>
+#include "stats.h"
 
 namespace MiniSync
 {
@@ -58,7 +59,9 @@ namespace MiniSync
         const std::string& peer;
         const uint16_t peer_port;
         SOCKADDR peer_addr;
+        const std::string stat_file_path;
         std::unique_ptr<MiniSync::SyncAlgorithm> algo;
+        MiniSync::Stats::SyncStats stats;
         void handshake();
         void sync();
 
@@ -68,8 +71,9 @@ namespace MiniSync
         SyncNode(uint16_t bind_port,
                  std::string& peer,
                  uint16_t peer_port,
-                 std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo);
-        ~SyncNode() override = default;
+                 std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo,
+                 std::string stat_file_path = "");
+        ~SyncNode() override; // = default;
 
         void run() final;
     };
