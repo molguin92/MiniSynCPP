@@ -80,7 +80,7 @@ namespace MiniSync
             long double error = 0;
         } currentOffset; // current offset in nanoseconds
 
-        double diff_factor; // difference between current lines
+        long double diff_factor; // difference between current lines
         uint32_t processed_timestamps;
 
         SyncAlgorithm() :
@@ -105,14 +105,14 @@ namespace MiniSync
         /*
          * Get the current estimated relative clock drift.
          */
-        double getDrift();
-        double getDriftError();
+        long double getDrift();
+        long double getDriftError();
 
         /*
          * Get the current estimated relative clock offset in nanoseconds.
          */
         int64_t getOffsetNanoSeconds();
-        double getOffsetError();
+        long double getOffsetError();
 
         /*
          * Get the current POSIX timestamp in nanoseconds corrected using the estimated relative clock drift and offset.

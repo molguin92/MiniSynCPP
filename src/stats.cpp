@@ -6,12 +6,18 @@
 */
 
 #include "stats.h"
+#include "../../../../../opt/cross-pi-gcc-8.3.0-2/arm-linux-gnueabihf/include/c++/8.3.0/chrono"
 #include <fstream>
 #include <loguru/loguru.hpp>
 
-void MiniSync::Stats::SyncStats::add_sample(int64_t offset, double offset_error, double drift, double drift_error)
+void MiniSync::Stats::SyncStats::add_sample(int64_t offset,
+                                            long double offset_error,
+                                            long double drift,
+                                            long double drift_error)
 {
     Sample n_sample;
+    n_sample.current_timestamp = std::chrono::duration_cast<std::chrono::nanoseconds>
+    (std::chrono::system_clock::now().time_since_epoch()).count();
     n_sample.offset = offset;
     n_sample.offset_error = offset_error;
     n_sample.drift = drift;
@@ -28,11 +34,12 @@ uint32_t MiniSync::Stats::SyncStats::write_csv(const std::string& path)
     {
         std::ofstream outfile{path, std::ofstream::out};
         // write header
-        outfile << "Sample;Drift;Drift Error;Offset;Offset Error" << std::endl;
+        outfile << "Sample;Timestamp;Drift;Drift Error;Offset;Offset Error" << std::endl;
         for (; i < this->samples.size(); i++)
         {
             const Sample& s = this->samples.at(i);
             outfile << i << ";"
+                    << s.current_timestamp << ";"
                     << s.drift << ";" << s.drift_error << ";"
                     << s.offset << ";" << s.offset_error << std::endl;
         }

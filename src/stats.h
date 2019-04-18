@@ -18,11 +18,11 @@ namespace MiniSync
     {
         typedef struct Sample
         {
+            uint64_t current_timestamp = 0;
             int64_t offset = 0;
-            double offset_error = 0;
-
-            double drift = 0;
-            double drift_error = 0;
+            long double offset_error = 0;
+            long double drift = 0;
+            long double drift_error = 0;
         } Sample;
 
         class SyncStats
@@ -37,8 +37,10 @@ namespace MiniSync
 
             ~SyncStats() = default;
 
-            void add_sample(int64_t offset, double offset_error,
-                            double drift, double drift_error);
+            void add_sample(int64_t offset,
+                            long double offset_error,
+                            long double drift,
+                            long double drift_error);
 
             uint32_t write_csv(const std::string& path);
 

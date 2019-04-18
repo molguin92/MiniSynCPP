@@ -9,12 +9,12 @@
 #include <loguru/loguru.hpp>
 #include "minisync.h"
 
-double MiniSync::SyncAlgorithm::getDrift()
+long double MiniSync::SyncAlgorithm::getDrift()
 {
     return this->currentDrift.value;
 }
 
-double MiniSync::SyncAlgorithm::getDriftError()
+long double MiniSync::SyncAlgorithm::getDriftError()
 {
     return this->currentDrift.error;
 }
@@ -24,7 +24,7 @@ int64_t MiniSync::SyncAlgorithm::getOffsetNanoSeconds()
     return this->currentOffset.value;
 }
 
-double MiniSync::SyncAlgorithm::getOffsetError()
+long double MiniSync::SyncAlgorithm::getOffsetError()
 {
     return this->currentOffset.error;
 }
@@ -134,7 +134,7 @@ void MiniSync::TinySyncAlgorithm::__recalculateEstimates(Point& n_low, Point& n_
 
     ConstraintLine* new_upper = this->high2low;
     ConstraintLine* new_lower = this->low2high;
-    double new_diff = this->diff_factor;
+    auto new_diff = this->diff_factor;
 
     for (auto* lower: {this->low2high, lower_1, lower_2})
     {

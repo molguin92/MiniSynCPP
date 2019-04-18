@@ -262,8 +262,10 @@ void MiniSync::SyncNode::sync()
 
             LOG_F(INFO, "Current adjusted timestamp: %"
             PRIu64, algo->getCurrentTimeNanoSeconds());
-            LOG_F(INFO, "Drift: %f | Offset: %"
-            PRId64, drift, offset);
+            LOG_F(INFO, "Drift: %Lf | Error: %Lf", drift, drift_error);
+            LOG_F(INFO, "Skew: %"
+            PRId64
+            " | Error: %Lf", offset, offset_error);
 
             stats.add_sample(offset, offset_error, drift, drift_error);
 
@@ -419,7 +421,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                 const auto& handshake = incoming.handshake();
 
                 if (Protocol::VERSION_MAJOR != handshake.version_major() ||
-                Protocol::VERSION_MINOR != handshake.version_minor())
+                    Protocol::VERSION_MINOR != handshake.version_minor())
                 {
                     LOG_F(WARNING, "Handshake: Version mismatch.");
                     LOG_F(WARNING, "Local version: %"
