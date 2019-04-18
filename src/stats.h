@@ -10,6 +10,7 @@
 
 #include <cinttypes>
 #include <vector>
+#include <string>
 
 namespace MiniSynCPP
 {
@@ -30,8 +31,16 @@ namespace MiniSynCPP
             static const uint32_t INIT_VEC_SIZE = 100000;
             std::vector<Sample> samples;
 
-            SyncStats() : samples{INIT_VEC_SIZE}
+        public:
+            explicit SyncStats(uint32_t init_capacity = INIT_VEC_SIZE) : samples{init_capacity}
             {};
+
+            ~SyncStats() = default;
+
+            void add_sample(int64_t offset, double offset_error,
+                            double drift, double drift_error);
+
+            uint32_t write_csv(std::string path);
 
 
         };

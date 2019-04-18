@@ -6,3 +6,43 @@
 */
 
 #include "stats.h"
+#include <fstream>
+
+void MiniSynCPP::Stats::SyncStats::add_sample(int64_t offset, double offset_error, double drift, double drift_error)
+{
+    Sample n_sample;
+    n_sample.offset = offset;
+    n_sample.offset_error = offset_error;
+    n_sample.drift = drift;
+    n_sample.drift_error = drift_error;
+
+    this->samples.push_back(n_sample);
+}
+
+uint32_t MiniSynCPP::Stats::SyncStats::write_csv(std::string path)
+{
+    int i = 0;
+    try
+    {
+        std::ofstream outfile{path, std::ofstream::out};
+        // write header
+        outfile << "Sample;Drift;Drift Error;Offset;Offset Error" << std::endl;
+        for (; i < this->samples.size(); i++)
+        {
+            const Sample& s = this->samples.at(i);
+            outfile << i << ";"
+                    << s.drift << ";" << s.drift_error << ";"
+                    << s.offset << ";" << s.offset_error << std::endl;
+        }
+        // done
+        outfile.close();
+    }
+    catch (...)
+    {
+        // in case of any error, (try to) remove the file
+        remove(path.c_str());
+        __throw_exception_again;
+    }
+
+    return i - 1; // number of written records
+}
