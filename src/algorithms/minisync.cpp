@@ -6,6 +6,7 @@
 */
 
 #include <cstdlib>
+#include <loguru/loguru.hpp>
 #include "minisync.h"
 
 double MiniSync::SyncAlgorithm::getDrift()
@@ -170,10 +171,10 @@ void MiniSync::TinySyncAlgorithm::__recalculateEstimates(Point& n_low, Point& n_
 
 MiniSync::ConstraintLine::ConstraintLine(const Point& p1, const Point& p2) : p1(p1), p2(p2)
 {
-    this->A = static_cast<long double>(p1.y - p2.y) / (p1.x - p2.x);
+    this->A = static_cast<long double>(p2.y - p1.y) / static_cast<long double>(p2.x - p1.x);
 
     // slope can't be negative
     if (this->A < 0) throw MiniSync::Exception();
 
-    this->B = p1.y - (this->A * p1.x);
+    this->B = static_cast<long double>(p1.y) - (this->A * p1.x);
 }
