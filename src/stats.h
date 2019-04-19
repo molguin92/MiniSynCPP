@@ -18,8 +18,8 @@ namespace MiniSync
     {
         typedef struct Sample
         {
-            uint64_t current_timestamp = 0;
-            int64_t offset = 0;
+            long double current_timestamp = 0;
+            long double offset = 0;
             long double offset_error = 0;
             long double drift = 0;
             long double drift_error = 0;
@@ -37,7 +37,7 @@ namespace MiniSync
 
             ~SyncStats() = default;
 
-            void add_sample(int64_t offset,
+            void add_sample(long double offset,
                             long double offset_error,
                             long double drift,
                             long double drift_error);

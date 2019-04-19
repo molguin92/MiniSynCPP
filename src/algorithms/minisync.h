@@ -14,26 +14,16 @@
 
 namespace MiniSync
 {
-    template<class Duration> using sys_time = std::chrono::time_point<std::chrono::system_clock, Duration>;
-    using sys_nanoseconds = sys_time<std::chrono::nanoseconds>;
-
-    class Exception : public std::exception
-    {
-    public:
-        const char* what() const noexcept final
-        {
-            return "Error in time synchronization, got invalid timestamp!";
-        }
-    };
+    using us_t = std::chrono::duration<long double, std::chrono::microseconds::period>;
 
     class Point
     {
     public:
-        const uint64_t x;
-        const uint64_t y;
+        const us_t x;
+        const us_t y;
         Point() = delete;
 
-        Point(uint64_t x, uint64_t y) : x(x), y(y)
+        Point(us_t x, us_t y) : x(x), y(y)
         {};
 
         Point(const Point& o) = default;
@@ -43,7 +33,7 @@ namespace MiniSync
     {
     private:
         long double A;
-        long double B;
+        us_t B;
     public:
         ConstraintLine() = delete;
         ConstraintLine(const Point& p1, const Point& p2);
@@ -51,7 +41,7 @@ namespace MiniSync
         long double getA()
         { return this->A; }
 
-        long double getB()
+        us_t getB()
         { return this->B; }
 
         const Point p1;
@@ -76,11 +66,11 @@ namespace MiniSync
 
         struct
         {
-            int64_t value = 0;
-            long double error = 0;
-        } currentOffset; // current offset in nanoseconds
+            us_t value{0};
+            us_t error{0};
+        } currentOffset; // current offset in µseconds
 
-        long double diff_factor; // difference between current lines
+        us_t diff_factor; // difference between current lines
         uint32_t processed_timestamps;
 
         SyncAlgorithm() :
@@ -100,7 +90,7 @@ namespace MiniSync
         /*
          * Add a new DataPoint and recalculate offset and drift.
          */
-        void addDataPoint(int64_t t_o, int64_t t_b, int64_t t_r);
+        void addDataPoint(us_t To, us_t Tb, us_t Tr);
 
         /*
          * Get the current estimated relative clock drift.
@@ -111,13 +101,13 @@ namespace MiniSync
         /*
          * Get the current estimated relative clock offset in nanoseconds.
          */
-        int64_t getOffsetNanoSeconds();
-        long double getOffsetError();
+        us_t getOffsetNanoSeconds();
+        us_t getOffsetError();
 
         /*
-         * Get the current POSIX timestamp in nanoseconds corrected using the estimated relative clock drift and offset.
+         * Get the current adjusted time
          */
-        uint64_t getCurrentTimeNanoSeconds();
+        std::chrono::time_point<std::chrono::system_clock, us_t> getCurrentAdjustedTime();
 
         virtual ~SyncAlgorithm();
     };

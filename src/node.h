@@ -22,6 +22,8 @@ namespace MiniSync
     class Node
     {
     protected:
+        std::chrono::steady_clock::time_point start; // TODO: timestamp
+
         int sock_fd;
         uint16_t bind_port;
         SOCKADDR local_addr;
@@ -30,9 +32,8 @@ namespace MiniSync
 
         Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode);
 
-        static uint64_t current_time_ns();
-        uint64_t send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest);
-        uint64_t recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to);
+        us_t send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest);
+        us_t recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to);
 
     public:
         virtual void run() = 0;

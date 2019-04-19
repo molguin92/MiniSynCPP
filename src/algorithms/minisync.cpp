@@ -19,58 +19,63 @@ long double MiniSync::SyncAlgorithm::getDriftError()
     return this->currentDrift.error;
 }
 
-int64_t MiniSync::SyncAlgorithm::getOffsetNanoSeconds()
+MiniSync::us_t MiniSync::SyncAlgorithm::getOffsetNanoSeconds()
 {
     return this->currentOffset.value;
 }
 
-long double MiniSync::SyncAlgorithm::getOffsetError()
+MiniSync::us_t MiniSync::SyncAlgorithm::getOffsetError()
 {
     return this->currentOffset.error;
 }
 
-uint64_t MiniSync::SyncAlgorithm::getCurrentTimeNanoSeconds()
+std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::SyncAlgorithm::getCurrentAdjustedTime()
 {
     auto t_now = std::chrono::system_clock::now().time_since_epoch();
-    uint64_t now = std::chrono::duration_cast<std::chrono::nanoseconds>(t_now).count();
-    return static_cast<uint64_t>(now * this->currentDrift.value) + this->currentOffset.value;
+    return std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t>{
+    this->currentDrift.value * t_now +
+    this->currentOffset.value
+    };
 }
 
-void MiniSync::SyncAlgorithm::addDataPoint(int64_t t_o, int64_t t_b, int64_t t_r)
+void MiniSync::SyncAlgorithm::addDataPoint(us_t To, us_t Tb, us_t Tr)
 {
+
     if (processed_timestamps == 0)
     {
         // first sample
-        this->init_low = new Point(t_b, t_o);
-        this->init_high = new Point(t_b, t_r);
+        this->init_low = new Point(Tb, To);
+        this->init_high = new Point(Tb, Tr);
         this->processed_timestamps++;
     }
     else if (processed_timestamps == 1)
     {
         // second sample
         // now we can create the lines
-        this->low2high = new ConstraintLine(*this->init_low, Point(t_b, t_r));
-        this->high2low = new ConstraintLine(*this->init_high, Point(t_b, t_o));
+        this->low2high = new ConstraintLine(*this->init_low, Point(Tb, Tr));
+        this->high2low = new ConstraintLine(*this->init_high, Point(Tb, To));
         this->processed_timestamps++;
 
-        long double A_upper = this->low2high->getA();
-        long double B_lower = this->low2high->getB();
-        long double A_lower = this->high2low->getA();
-        long double B_upper = this->high2low->getB();
+        auto A_upper = this->low2high->getA();
+        auto B_lower = this->low2high->getB();
+        auto A_lower = this->high2low->getA();
+        auto B_upper = this->high2low->getB();
 
         this->diff_factor = (A_upper - A_lower) * (B_upper - B_lower);
 
-        this->currentDrift.value = (A_lower + A_upper) / 2;
-        this->currentOffset.value = static_cast<uint64_t>((B_lower + B_upper) / 2);
-        this->currentDrift.error = (A_upper - A_lower) / 2;
-        this->currentOffset.error = (B_upper - B_lower) / 2;
+        this->currentDrift.value = (A_lower + A_upper) / 2.0;
+        this->currentOffset.value = (B_lower + B_upper) / 2.0;
+        this->currentDrift.error = (A_upper - A_lower) / 2.0;
+        this->currentOffset.error = (B_upper - B_lower) / 2.0;
+
+        CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
     }
     else
     {
         // n_th sample, n > 2
         // pass it on to the specific algorithm
-        auto n_low = Point(t_b, t_o);
-        auto n_high = Point(t_b, t_r);
+        auto n_low = Point(Tb, To);
+        auto n_high = Point(Tb, Tr);
         this->__recalculateEstimates(n_low, n_high);
     }
 
@@ -164,17 +169,18 @@ void MiniSync::TinySyncAlgorithm::__recalculateEstimates(Point& n_low, Point& n_
     this->diff_factor = new_diff;
 
     this->currentDrift.value = (new_lower->getA() + new_upper->getA()) / 2;
-    this->currentOffset.value = static_cast<uint64_t>((new_lower->getB() + new_upper->getB()) / 2);
+    this->currentOffset.value = (new_lower->getB() + new_upper->getB()) / 2;
     this->currentDrift.error = (new_lower->getA() - new_upper->getA()) / 2;
     this->currentOffset.error = (new_upper->getB() - new_lower->getB()) / 2;
+
+    CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
 }
 
-MiniSync::ConstraintLine::ConstraintLine(const Point& p1, const Point& p2) : p1(p1), p2(p2)
+MiniSync::ConstraintLine::ConstraintLine(const Point& p1, const Point& p2) : p1(p1), p2(p2), B({})
 {
-    this->A = static_cast<long double>(p2.y - p1.y) / static_cast<long double>(p2.x - p1.x);
+    this->A = (p2.y - p1.y).count() / (p2.x - p1.x).count();
 
     // slope can't be negative
-    if (this->A < 0) throw MiniSync::Exception();
-
-    this->B = static_cast<long double>(p1.y) - (this->A * p1.x);
+    // CHECK_GT_F(this->A, 0, "Slope can't be negative!"); // it actually can, at least for the constrain lines
+    this->B = us_t{p1.y - (this->A * p1.x)};
 }

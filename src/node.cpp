@@ -10,7 +10,7 @@
 #include "node.h"
 #include "net/protocol.h"
 #include "exception.h"
-#include <string.h>
+#include <cstring>
 #include <unistd.h>
 #include <protocol.pb.h>
 #include <google/protobuf/message.h>
@@ -43,13 +43,6 @@ bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode), running(true)
                PRIu16, bind_port);
 }
 
-uint64_t MiniSync::Node::current_time_ns()
-{
-    return std::chrono::duration_cast<std::chrono::nanoseconds>(
-    std::chrono::system_clock::now().time_since_epoch()
-    ).count();
-}
-
 MiniSync::Node::~Node()
 {
     // close the socket on destruction
@@ -60,7 +53,8 @@ MiniSync::Node::~Node()
     // close(this->sock_fd);
 }
 
-uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest)
+MiniSync::us_t
+MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest)
 {
     size_t out_sz = msg.ByteSize();
     uint8_t reply_buf[out_sz];
@@ -70,7 +64,7 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
     PRISIZE_T
     " bytes...", out_sz);
 
-    uint64_t timestamp = this->current_time_ns(); // timestamp BEFORE passing on to network stack
+    us_t timestamp = std::chrono::steady_clock::now() - start; // timestamp BEFORE passing on to network stack
     if (sendto(this->sock_fd, reply_buf, out_sz, 0, dest, sizeof(*dest)) != out_sz)
     {
         DLOG_F(WARNING, "Could not write to socket.");
@@ -79,13 +73,12 @@ uint64_t MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, cons
 
     DLOG_F(INFO, "Sent a message of size %"
     PRISIZE_T
-    " bytes with timestamp %"
-    PRIu64
-    "...", out_sz, timestamp);
+    " bytes with timestamp %Lf µs...", out_sz, timestamp.count());
     return timestamp;
 }
 
-uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to)
+MiniSync::us_t
+MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to)
 {
     uint8_t buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
     ssize_t recv_sz;
@@ -106,13 +99,11 @@ uint64_t MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, stru
         else throw MiniSync::Exceptions::SocketReadException();
     }
 
-    uint64_t timestamp = this->current_time_ns(); // timestamp after receiving whole message
+    us_t timestamp = std::chrono::steady_clock::now() - start; // timestamp after receiving whole message
 
     DLOG_F(INFO, "Got %"
     PRISIZE_T
-    " bytes of data at time %"
-    PRIu64
-    ".", recv_sz, timestamp);
+    " bytes of data at time %Lf µs.", recv_sz, timestamp.count());
     // deserialize buffer into a protobuf message
     if (!msg.ParseFromArray(buf, recv_sz))
     {
@@ -175,6 +166,8 @@ void MiniSync::SyncNode::handshake()
                     CHECK_GE_F(connect(this->sock_fd, (struct sockaddr*) &this->peer_addr, sizeof(this->peer_addr)), 0,
                                "Failed connecting socket to peer %s:%"
                                PRIu16, this->peer.c_str(), this->peer_port);
+                    // "start" local clock
+                    this->start = std::chrono::steady_clock::now();
                     return;
                 }
 
@@ -210,7 +203,7 @@ void MiniSync::SyncNode::sync()
     // send sync beacons and wait for timestamps
     MiniSync::Protocol::MiniSyncMsg msg{};
 
-    uint64_t to, tbr, tbt, tr;
+    MiniSync::us_t to, tbr, tbt, tr;
     uint8_t seq = 0;
 
     while (this->running.load())
@@ -247,10 +240,12 @@ void MiniSync::SyncNode::sync()
                 continue;
             }
 
-            tbr = reply.beacon_recv_time();
-            tbt = reply.reply_send_time();
+            // timestamps are in nanoseconds, but protocol works with microseconds
+            tbr = us_t{std::chrono::nanoseconds{reply.beacon_recv_time()}};
+            tbt = us_t{std::chrono::nanoseconds{reply.reply_send_time()}};
 
-            LOG_F(INFO, "Timestamps:\nto=\t%lu\ntbr=\t%lu\ntbt=\t%lu\ntr=\t%lu", to, tbr, tbt, tr);
+            LOG_F(INFO, "Timestamps:\nto=\t%Lf\ntbr=\t%Lf\ntbt=\t%Lf\ntr=\t%Lf",
+                  to.count(), tbr.count(), tbt.count(), tr.count());
 
             this->algo->addDataPoint(to, tbr, tr);
             this->algo->addDataPoint(to, tbt, tr);
@@ -260,14 +255,15 @@ void MiniSync::SyncNode::sync()
             auto offset = algo->getOffsetNanoSeconds();
             auto offset_error = algo->getOffsetError();
 
-            LOG_F(INFO, "Current adjusted timestamp: %"
-            PRIu64, algo->getCurrentTimeNanoSeconds());
-            LOG_F(INFO, "Drift: %Lf | Error: %Lf", drift, drift_error);
-            LOG_F(INFO, "Skew: %"
-            PRId64
-            " | Error: %Lf", offset, offset_error);
+            auto
+            adj_timestamp =
+            std::chrono::duration_cast<MiniSync::us_t>(algo->getCurrentAdjustedTime().time_since_epoch());
 
-            stats.add_sample(offset, offset_error, drift, drift_error);
+            LOG_F(INFO, "Current adjusted timestamp: %Lf µs", adj_timestamp.count());
+            LOG_F(INFO, "Drift: %Lf | Error: +/- %Lf", drift, drift_error);
+            LOG_F(INFO, "Offset: %Lf µs | Error: +/- %Lf µs", offset.count(), offset_error.count());
+
+            stats.add_sample(offset.count(), offset_error.count(), drift, drift_error);
 
             seq++;
             msg.Clear();
@@ -340,7 +336,7 @@ void MiniSync::ReferenceNode::run()
 void MiniSync::ReferenceNode::serve()
 {
     // set up variables
-    uint64_t recv_time_ns;
+    us_t recv_time;
 
     MiniSync::Protocol::MiniSyncMsg incoming{};
     MiniSync::Protocol::MiniSyncMsg outgoing{};
@@ -352,7 +348,7 @@ void MiniSync::ReferenceNode::serve()
         LOG_F(INFO, "Listening for incoming beacons.");
         try
         {
-            recv_time_ns = this->recv_message(incoming, nullptr);
+            recv_time = this->recv_message(incoming, nullptr);
 
             if (incoming.has_beacon())
             {
@@ -360,14 +356,16 @@ void MiniSync::ReferenceNode::serve()
                 auto* reply = new MiniSync::Protocol::BeaconReply{};
                 const MiniSync::Protocol::Beacon& beacon = incoming.beacon();
                 reply->set_seq(beacon.seq());
-                reply->set_beacon_recv_time(recv_time_ns);
+                reply->set_beacon_recv_time(std::chrono::duration_cast<std::chrono::nanoseconds>(recv_time).count());
 
                 LOG_F(INFO, "Received a beacon (SEQ %"
                 PRIu8
                 ").", beacon.seq());
 
                 outgoing.set_allocated_beacon_r(reply);
-                reply->set_reply_send_time(Node::current_time_ns());
+                reply->set_reply_send_time(
+                std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - start).count()
+                );
 
                 LOG_F(INFO, "Replying to beacon.");
                 this->send_message(outgoing, nullptr);
@@ -449,6 +447,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                     // UDP is connectionless, this is merely to store the address of the client and "fake" a connection
                     CHECK_GE_F(connect(this->sock_fd, &reply_to, reply_to_len), 0,
                                "Call to connect failed. ERRNO: %s", strerror(errno));
+                    this->start = std::chrono::steady_clock::now(); // start counting time
                     listening = false;
                 }
 
