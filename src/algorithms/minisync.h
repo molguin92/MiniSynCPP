@@ -11,6 +11,8 @@
 # include <chrono>
 # include <tuple>
 # include <exception>
+# include <map>
+# include <set>
 
 namespace MiniSync
 {
@@ -18,45 +20,126 @@ namespace MiniSync
 
     class Point
     {
+    private:
+        us_t x;
+        us_t y;
     public:
-        const us_t x;
-        const us_t y;
-        Point() = delete;
+        Point() : x(0), y(0)
+        {};
 
         Point(us_t x, us_t y) : x(x), y(y)
         {};
 
+        const us_t& getX() const
+        {
+            return this->x;
+        }
+
+        const us_t& getY() const
+        {
+            return this->y;
+        }
+
+        bool operator<(const Point& o) const
+        {
+            return !(*this == o);
+        }
+
+        bool operator>(const Point& o) const
+        {
+            return !(*this == o);
+        }
+
+    protected:
         Point(const Point& o) = default;
+        bool operator==(const Point& o) const;
+    };
+
+    class LowerPoint : public Point
+    {
+    public:
+        LowerPoint() : Point()
+        {}
+
+        LowerPoint(us_t x, us_t y) : Point(x, y)
+        {}
+
+        LowerPoint(const LowerPoint& o) = default;
+
+        bool operator==(const LowerPoint& o) const
+        {
+            return Point::operator==(o);
+        };
+
+        bool operator!=(const LowerPoint& o) const
+        {
+            return !Point::operator==(o);
+        }
+    };
+
+    class HigherPoint : public Point
+    {
+    public:
+        HigherPoint() : Point()
+        {}
+
+        HigherPoint(us_t x, us_t y) : Point(x, y)
+        {}
+
+        HigherPoint(const HigherPoint& o) = default;
+
+        bool operator==(const HigherPoint& o) const
+        {
+            return Point::operator==(o);
+        };
+
+        bool operator!=(const HigherPoint& o) const
+        {
+            return !Point::operator==(o);
+        }
     };
 
     class ConstraintLine
     {
+    public:
+
+        ConstraintLine() : A(0), B(0)
+        {};
+        ConstraintLine(const LowerPoint& p1, const HigherPoint& p2);
+
+        ConstraintLine(const HigherPoint& p1, const LowerPoint& p2) : ConstraintLine(p2, p1)
+        {};
+
+        ConstraintLine(const ConstraintLine& o) :
+        A(o.getA()), B(o.getB())
+        {}
+
+        long double getA() const
+        { return this->A; }
+
+        us_t getB() const
+        { return this->B; }
+
+        bool operator==(const ConstraintLine& o) const;
+
     private:
         long double A;
         us_t B;
-    public:
-        ConstraintLine() = delete;
-        ConstraintLine(const Point& p1, const Point& p2);
-
-        long double getA()
-        { return this->A; }
-
-        us_t getB()
-        { return this->B; }
-
-        const Point p1;
-        const Point p2;
     };
 
     class SyncAlgorithm
     {
     protected:
         // constraints
-        ConstraintLine* low2high;
-        ConstraintLine* high2low;
+        std::map<std::pair<LowerPoint, HigherPoint>, ConstraintLine> low_constraints;
+        std::map<std::pair<LowerPoint, HigherPoint>, ConstraintLine> high_constraints;
+        std::set<LowerPoint> low_points;
+        std::set<HigherPoint> high_points;
 
-        Point* init_low;
-        Point* init_high;
+        ConstraintLine current_high;
+        ConstraintLine current_low;
+        std::pair<LowerPoint, HigherPoint> current_high_pts;
+        std::pair<LowerPoint, HigherPoint> current_low_pts;
 
         struct
         {
@@ -73,19 +156,12 @@ namespace MiniSync
         us_t diff_factor; // difference between current lines
         uint32_t processed_timestamps;
 
-        SyncAlgorithm() :
-        init_low(nullptr),
-        init_high(nullptr),
-        low2high(nullptr),
-        high2low(nullptr),
-        processed_timestamps(0),
-        diff_factor(0)
-        {};
+        SyncAlgorithm();
 
         /*
          * Subclasses need to override this function with their own drift and offset estimation implementation.
          */
-        virtual void __recalculateEstimates(Point& n_low, Point& n_high) = 0;
+        virtual void __recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high) = 0;
     public:
         /*
          * Add a new DataPoint and recalculate offset and drift.
@@ -108,26 +184,22 @@ namespace MiniSync
          * Get the current adjusted time
          */
         std::chrono::time_point<std::chrono::system_clock, us_t> getCurrentAdjustedTime();
-
-        virtual ~SyncAlgorithm();
     };
 
     class TinySyncAlgorithm : public SyncAlgorithm
     {
     public:
         TinySyncAlgorithm() = default;
-        ~TinySyncAlgorithm() override = default;
     private:
-        void __recalculateEstimates(Point& n_low, Point& n_high) final;
+        void __recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high) final;
     };
 
     class MiniSyncAlgorithm : public SyncAlgorithm
     {
     public:
         MiniSyncAlgorithm() = default;
-        ~MiniSyncAlgorithm() override = default;
     private:
-        void __recalculateEstimates(Point& n_low, Point& n_high) final;
+        void __recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high) final; // TODO: implement
     };
 }
 
