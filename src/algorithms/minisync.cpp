@@ -33,7 +33,7 @@ MiniSync::us_t MiniSync::SyncAlgorithm::getOffsetError()
 std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::SyncAlgorithm::getCurrentAdjustedTime()
 {
     auto t_now = std::chrono::system_clock::now().time_since_epoch();
-    return std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t>{
+    return std::chrono::time_point<std::chrono::system_clock, us_t>{
     this->currentDrift.value * t_now +
     this->currentOffset.value
     };
@@ -178,27 +178,6 @@ void MiniSync::TinySyncAlgorithm::__recalculateEstimates(const LowerPoint& n_low
     this->currentOffset.error = (current_high.getB() - current_low.getB()) / 2;
 
     CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
-}
-
-MiniSync::ConstraintLine::ConstraintLine(const LowerPoint& p1, const HigherPoint& p2) : B({})
-{
-    CHECK_NE_F(p1.getX(), p2.getX(), "Points in a constraint line cannot have the same REF timestamp!");
-
-    this->A = (p2.getY() - p1.getY()).count() / (p2.getX() - p1.getX()).count();
-
-    // slope can't be negative
-    // CHECK_GT_F(this->A, 0, "Slope can't be negative!"); // it actually can, at least for the constrain lines
-    this->B = us_t{p1.getY() - (this->A * p1.getX())};
-}
-
-bool MiniSync::ConstraintLine::operator==(const MiniSync::ConstraintLine& o) const
-{
-    return this->A == o.getA() && this->B == o.getB();
-}
-
-bool MiniSync::Point::operator==(const MiniSync::Point& o) const
-{
-    return this->x == o.x && this->y == o.y;
 }
 
 

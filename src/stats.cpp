@@ -8,6 +8,7 @@
 #include "stats.h"
 #include <chrono>
 #include "algorithms/minisync.h"
+#include "algorithms/constraints.h"
 #include <fstream>
 #include <loguru/loguru.hpp>
 
@@ -17,7 +18,7 @@ void MiniSync::Stats::SyncStats::add_sample(long double offset,
                                             long double drift_error)
 {
     Sample n_sample;
-    n_sample.current_timestamp = std::chrono::duration_cast<MiniSync::us_t>
+    n_sample.current_timestamp = std::chrono::duration_cast<us_t>
     (std::chrono::system_clock::now().time_since_epoch()).count();
     n_sample.offset = offset;
     n_sample.offset_error = offset_error;

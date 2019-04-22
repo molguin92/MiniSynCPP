@@ -16,6 +16,7 @@
 #include <google/protobuf/message.h>
 #include <thread>
 #include "loguru/loguru.hpp"
+#include "algorithms/constraints.h"
 
 #ifdef __x86_64__
 #define PRISIZE_T PRIu64
@@ -203,7 +204,7 @@ void MiniSync::SyncNode::sync()
     // send sync beacons and wait for timestamps
     MiniSync::Protocol::MiniSyncMsg msg{};
 
-    MiniSync::us_t to, tbr, tbt, tr;
+    us_t to, tbr, tbt, tr;
     uint8_t seq = 0;
 
     while (this->running.load())
@@ -257,7 +258,7 @@ void MiniSync::SyncNode::sync()
 
             auto
             adj_timestamp =
-            std::chrono::duration_cast<MiniSync::us_t>(algo->getCurrentAdjustedTime().time_since_epoch());
+            std::chrono::duration_cast<us_t>(algo->getCurrentAdjustedTime().time_since_epoch());
 
             LOG_F(INFO, "Current adjusted timestamp: %Lf µs", adj_timestamp.count());
             LOG_F(INFO, "Drift: %Lf | Error: +/- %Lf", drift, drift_error);

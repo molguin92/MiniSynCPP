@@ -14,6 +14,7 @@
 #include "algorithms/minisync.h"
 #include <protocol.pb.h>
 #include "stats.h"
+#include "algorithms/constraints.h"
 
 namespace MiniSync
 {
