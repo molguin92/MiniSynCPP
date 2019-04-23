@@ -40,16 +40,6 @@ namespace MiniSync
             return this->y;
         }
 
-        bool operator<(const Point& o) const
-        {
-            return !(*this == o);
-        }
-
-        bool operator>(const Point& o) const
-        {
-            return !(*this == o);
-        }
-
     protected:
         Point(const Point& o) = default;
         bool operator==(const Point& o) const;
@@ -75,6 +65,16 @@ namespace MiniSync
         {
             return !Point::operator==(o);
         }
+
+        bool operator<(const LowerPoint& o) const
+        {
+            return this->getX() < o.getX();
+        }
+
+        bool operator>(const LowerPoint& o) const
+        {
+            return this->getX() > o.getX();
+        }
     };
 
     class HigherPoint : public Point
@@ -96,6 +96,16 @@ namespace MiniSync
         bool operator!=(const HigherPoint& o) const
         {
             return !Point::operator==(o);
+        }
+
+        bool operator<(const HigherPoint& o) const
+        {
+            return this->getX() < o.getX();
+        }
+
+        bool operator>(const HigherPoint& o) const
+        {
+            return this->getX() > o.getX();
         }
     };
 
