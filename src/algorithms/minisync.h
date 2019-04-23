@@ -49,10 +49,13 @@ namespace MiniSync
 
         SyncAlgorithm();
 
+        void __recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high);
+
         /*
-         * Subclasses need to override this function with their own drift and offset estimation implementation.
+         * Subclasses need to override this function with their own cleanup method.
          */
-        virtual void __recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high) = 0;
+
+        virtual void __cleanup() = 0;
     public:
         /*
          * Add a new DataPoint and recalculate offset and drift.
@@ -82,7 +85,7 @@ namespace MiniSync
     public:
         TinySyncAlgorithm() = default;
     private:
-        void __recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high) final;
+        void __cleanup() final;
     };
 
     class MiniSyncAlgorithm : public SyncAlgorithm
@@ -90,7 +93,7 @@ namespace MiniSync
     public:
         MiniSyncAlgorithm() = default;
     private:
-        void __recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high) final; // TODO: implement
+        void __cleanup() final;
     };
 }
 

@@ -90,7 +90,7 @@ diff_factor(std::numeric_limits<long double>::max())
  * Drift_Error = (A_upper - A_lower)/2
  * Offset_Error = (B_upper - B_lower)/2
  */
-void MiniSync::TinySyncAlgorithm::__recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high)
+void MiniSync::SyncAlgorithm::__recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high)
 {
     // assume timestamps come in time order
     //
@@ -141,6 +141,19 @@ void MiniSync::TinySyncAlgorithm::__recalculateEstimates(const LowerPoint& n_low
         }
     }
 
+    this->__cleanup();
+
+    this->currentDrift.value = (current_low.getA() + current_high.getA()) / 2;
+    this->currentOffset.value = (current_low.getB() + current_high.getB()) / 2;
+    this->currentDrift.error = (current_low.getA() - current_high.getA()) / 2;
+    this->currentOffset.error = (current_high.getB() - current_low.getB()) / 2;
+
+    CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
+}
+
+
+void MiniSync::TinySyncAlgorithm::__cleanup()
+{
     // cleanup
     for (auto iter = low_points.begin(); iter != low_points.end();)
     {
@@ -171,13 +184,38 @@ void MiniSync::TinySyncAlgorithm::__recalculateEstimates(const LowerPoint& n_low
                 this->high_constraints.emplace(pair, tmp_high_cons.at(pair));
         }
     }
-
-    this->currentDrift.value = (current_low.getA() + current_high.getA()) / 2;
-    this->currentOffset.value = (current_low.getB() + current_high.getB()) / 2;
-    this->currentDrift.error = (current_low.getA() - current_high.getA()) / 2;
-    this->currentOffset.error = (current_high.getB() - current_low.getB()) / 2;
-
-    CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
 }
 
+void MiniSync::MiniSyncAlgorithm::__cleanup()
+{
+    // cleanup
+    for (auto iter = low_points.begin(); iter != low_points.end();)
+    {
+        if (current_low_pts.first != *iter && current_high_pts.first != *iter)
+            iter = low_points.erase(iter);
+        else
+            ++iter;
+    }
 
+    for (auto iter = high_points.begin(); iter != high_points.end();)
+    {
+        if (current_low_pts.second != *iter && current_high_pts.second != *iter)
+            iter = high_points.erase(iter);
+        else
+            ++iter;
+    }
+
+    auto tmp_low_cons = std::move(this->low_constraints);
+    auto tmp_high_cons = std::move(this->high_constraints);
+    for (auto h_point: high_points)
+    {
+        for (auto l_point: low_points)
+        {
+            auto pair = std::make_pair(l_point, h_point);
+            if (tmp_low_cons.count(pair) > 0)
+                this->low_constraints.emplace(pair, tmp_low_cons.at(pair));
+            else if (tmp_high_cons.count(pair) > 0)
+                this->high_constraints.emplace(pair, tmp_high_cons.at(pair));
+        }
+    }
+}
