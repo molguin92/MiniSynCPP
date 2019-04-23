@@ -146,6 +146,9 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates()
 
     this->__cleanup();
 
+    CHECK_NE_F(current_low.get(), nullptr, "current_low is null!");
+    CHECK_NE_F(current_high.get(), nullptr, "current_high is null!");
+
     this->currentDrift.value = (current_low->getA() + current_high->getA()) / 2;
     this->currentOffset.value = (current_low->getB() + current_high->getB()) / 2;
     this->currentDrift.error = (current_low->getA() - current_high->getA()) / 2;
