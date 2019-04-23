@@ -73,8 +73,8 @@ namespace MiniSync
         /*
          * Add a new low point and calculate associated constraints
          */
-        virtual void addLowPoint(us_t Tb, us_t To);
-        virtual void addHighPoint(us_t Tb, us_t Tr);
+        virtual LPointPtr addLowPoint(us_t Tb, us_t To);
+        virtual HPointPtr addHighPoint(us_t Tb, us_t Tr);
         virtual bool addConstraint(LPointPtr lp, HPointPtr hp);
     public:
         /*
@@ -116,6 +116,8 @@ namespace MiniSync
         std::unordered_map<std::pair<LPointPtr, LPointPtr>, long double, ppair_hash> low_slopes;
         std::unordered_map<std::pair<HPointPtr, HPointPtr>, long double, ppair_hash> high_slopes;
         void __cleanup() final;
+        LPointPtr addLowPoint(us_t Tb, us_t To) final;
+        HPointPtr addHighPoint(us_t Tb, us_t Tr) final;
     };
 }
 

@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <loguru/loguru.hpp>
 #include "minisync.h"
+#include <algorithm>
 
 long double MiniSync::SyncAlgorithm::getDrift()
 {
@@ -139,7 +140,7 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates()
     CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
 }
 
-void MiniSync::SyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
+MiniSync::LPointPtr MiniSync::SyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
 {
     auto lp = std::make_shared<LowPoint>(Tb, To);
     std::pair<LPointPtr, HPointPtr> pair;
@@ -151,9 +152,10 @@ void MiniSync::SyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
     }
 
     this->low_points.insert(lp);
+    return lp; // return a copy of the created pointer.
 }
 
-void MiniSync::SyncAlgorithm::addHighPoint(MiniSync::us_t Tb, MiniSync::us_t Tr)
+MiniSync::HPointPtr MiniSync::SyncAlgorithm::addHighPoint(MiniSync::us_t Tb, MiniSync::us_t Tr)
 {
     auto hp = std::make_shared<HighPoint>(Tb, Tr);
 
@@ -164,6 +166,7 @@ void MiniSync::SyncAlgorithm::addHighPoint(MiniSync::us_t Tb, MiniSync::us_t Tr)
     }
 
     this->high_points.insert(hp);
+    return hp; // return a copy of the created pointer.
 }
 
 bool MiniSync::SyncAlgorithm::addConstraint(MiniSync::LPointPtr lp, MiniSync::HPointPtr hp)
@@ -251,6 +254,21 @@ void MiniSync::MiniSyncAlgorithm::__cleanup()
             else if (tmp_high_cons.count(pair) > 0)
                 this->high_constraints.emplace(pair, tmp_high_cons.at(pair));
         }
+    }
+}
+
+MiniSync::LPointPtr MiniSync::MiniSyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
+{
+    auto lp = SyncAlgorithm::addLowPoint(Tb, To);
+    // calculate the slopes for the minisync algo
+    std::pair<LPointPtr, LPointPtr> pair;
+    long double M;
+    for (LPointPtr olp: this->low_points)
+    {
+        // lp is always the newest pointer, put it at the end
+        pair = std::make_pair(olp, lp);
+        M = (lp->getY() - olp->getY()) / (lp->getX() - olp->getX());
+        low_slopes.emplace(pair, M);
     }
 }
 
