@@ -16,7 +16,7 @@ bool MiniSync::Point::operator==(const Point& o) const
     return this->x == o.x && this->y == o.y;
 }
 
-MiniSync::ConstraintLine::ConstraintLine(const LowerPoint& p1, const HigherPoint& p2) : B({})
+MiniSync::ConstraintLine::ConstraintLine(const LowPoint& p1, const HighPoint& p2) : B({})
 {
     CHECK_NE_F(p1.getX(), p2.getX(), "Points in a constraint line cannot have the same REF timestamp!");
 

@@ -18,8 +18,8 @@
 
 namespace MiniSync
 {
-    using LPointPtr = std::shared_ptr<LowerPoint>;
-    using HPointPtr = std::shared_ptr<HigherPoint>;
+    using LPointPtr = std::shared_ptr<LowPoint>;
+    using HPointPtr = std::shared_ptr<HighPoint>;
     using ConstraintPtr = std::shared_ptr<ConstraintLine>;
 
     // some hash specializations we'll need

@@ -45,65 +45,65 @@ namespace MiniSync
         bool operator==(const Point& o) const;
     };
 
-    class LowerPoint : public Point
+    class LowPoint : public Point
     {
     public:
-        LowerPoint() : Point()
+        LowPoint() : Point()
         {}
 
-        LowerPoint(us_t x, us_t y) : Point(x, y)
+        LowPoint(us_t x, us_t y) : Point(x, y)
         {}
 
-        LowerPoint(const LowerPoint& o) = default;
+        LowPoint(const LowPoint& o) = default;
 
-        bool operator==(const LowerPoint& o) const
+        bool operator==(const LowPoint& o) const
         {
             return Point::operator==(o);
         };
 
-        bool operator!=(const LowerPoint& o) const
+        bool operator!=(const LowPoint& o) const
         {
             return !Point::operator==(o);
         }
 
-        bool operator<(const LowerPoint& o) const
+        bool operator<(const LowPoint& o) const
         {
             return this->getX() < o.getX();
         }
 
-        bool operator>(const LowerPoint& o) const
+        bool operator>(const LowPoint& o) const
         {
             return this->getX() > o.getX();
         }
     };
 
-    class HigherPoint : public Point
+    class HighPoint : public Point
     {
     public:
-        HigherPoint() : Point()
+        HighPoint() : Point()
         {}
 
-        HigherPoint(us_t x, us_t y) : Point(x, y)
+        HighPoint(us_t x, us_t y) : Point(x, y)
         {}
 
-        HigherPoint(const HigherPoint& o) = default;
+        HighPoint(const HighPoint& o) = default;
 
-        bool operator==(const HigherPoint& o) const
+        bool operator==(const HighPoint& o) const
         {
             return Point::operator==(o);
         };
 
-        bool operator!=(const HigherPoint& o) const
+        bool operator!=(const HighPoint& o) const
         {
             return !Point::operator==(o);
         }
 
-        bool operator<(const HigherPoint& o) const
+        bool operator<(const HighPoint& o) const
         {
             return this->getX() < o.getX();
         }
 
-        bool operator>(const HigherPoint& o) const
+        bool operator>(const HighPoint& o) const
         {
             return this->getX() > o.getX();
         }
@@ -115,9 +115,9 @@ namespace MiniSync
 
         ConstraintLine() : A(0), B(0)
         {};
-        ConstraintLine(const LowerPoint& p1, const HigherPoint& p2);
+        ConstraintLine(const LowPoint& p1, const HighPoint& p2);
 
-        ConstraintLine(const HigherPoint& p1, const LowerPoint& p2) : ConstraintLine(p2, p1)
+        ConstraintLine(const HighPoint& p1, const LowPoint& p2) : ConstraintLine(p2, p1)
         {};
 
         ConstraintLine(const ConstraintLine& o) :

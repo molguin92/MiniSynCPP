@@ -41,8 +41,8 @@ std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::Syn
 void MiniSync::SyncAlgorithm::addDataPoint(us_t To, us_t Tb, us_t Tr)
 {
     // add points to internal storage
-    this->low_points.insert(std::make_shared<LowerPoint>(Tb, To));
-    this->high_points.insert(std::make_shared<HigherPoint>(Tb, Tr));
+    this->low_points.insert(std::make_shared<LowPoint>(Tb, To));
+    this->high_points.insert(std::make_shared<HighPoint>(Tb, Tr));
     ++this->processed_timestamps;
 
     if (processed_timestamps > 1)
