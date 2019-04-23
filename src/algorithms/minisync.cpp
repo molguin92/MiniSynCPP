@@ -41,8 +41,11 @@ std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::Syn
 void MiniSync::SyncAlgorithm::addDataPoint(us_t To, us_t Tb, us_t Tr)
 {
     // add points to internal storage
-    this->low_points.insert(std::make_shared<LowPoint>(Tb, To));
-    this->high_points.insert(std::make_shared<HighPoint>(Tb, Tr));
+    //this->low_points.insert(std::make_shared<LowPoint>(Tb, To));
+    // this->high_points.insert(std::make_shared<HighPoint>(Tb, Tr));
+
+    this->addLowPoint(Tb, To);
+    this->addHighPoint(Tb, Tr);
     ++this->processed_timestamps;
 
     if (processed_timestamps > 1)
@@ -101,26 +104,6 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates()
 
     // lower lines (a_upper * x + b_lower)
 
-    // calculate new possible constraints
-    us_t low_x;
-    us_t high_x;
-    std::pair<LPointPtr, HPointPtr> pair;
-    for (LPointPtr lp: this->low_points)
-    {
-        for (HPointPtr hp: this->high_points)
-        {
-            low_x = lp->getX();
-            high_x = hp->getX();
-            pair = std::make_pair(lp, hp);
-
-            if (low_x == high_x) continue;
-            else if (low_x < high_x && this->low_constraints.count(pair) == 0)
-                this->low_constraints.emplace(pair, std::make_shared<ConstraintLine>(*lp, *hp));
-            else if (low_x > high_x && this->high_constraints.count(pair) == 0)
-                this->high_constraints.emplace(pair, std::make_shared<ConstraintLine>(*lp, *hp));
-        }
-    }
-
     us_t tmp_diff;
     for (const auto& iter_low: this->low_constraints)
     {
@@ -154,6 +137,52 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates()
     this->currentOffset.error = (current_high->getB() - current_low->getB()) / 2;
 
     CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
+}
+
+void MiniSync::SyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
+{
+    auto lp = std::make_shared<LowPoint>(Tb, To);
+    std::pair<LPointPtr, HPointPtr> pair;
+
+    // calculate new constraints
+    for (HPointPtr hp: this->high_points)
+    {
+        this->addConstraint(lp, hp);
+    }
+
+    this->low_points.insert(lp);
+}
+
+void MiniSync::SyncAlgorithm::addHighPoint(MiniSync::us_t Tb, MiniSync::us_t Tr)
+{
+    auto hp = std::make_shared<HighPoint>(Tb, Tr);
+
+    // calculate new constraints
+    for (LPointPtr lp: this->low_points)
+    {
+        this->addConstraint(lp, hp);
+    }
+
+    this->high_points.insert(hp);
+}
+
+bool MiniSync::SyncAlgorithm::addConstraint(MiniSync::LPointPtr lp, MiniSync::HPointPtr hp)
+{
+    auto pair = std::make_pair(lp, hp);
+
+    if (lp->getX() == hp->getX()) return false;
+    else if (lp->getX() < hp->getX() && this->low_constraints.count(pair) == 0)
+    {
+        this->low_constraints.emplace(pair, std::make_shared<ConstraintLine>(*lp, *hp));
+        return true;
+    }
+    else if (lp->getX() > hp->getX() && this->high_constraints.count(pair) == 0)
+    {
+        this->high_constraints.emplace(pair, std::make_shared<ConstraintLine>(*lp, *hp));
+        return true;
+    }
+
+    return false;
 }
 
 

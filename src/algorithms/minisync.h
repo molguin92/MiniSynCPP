@@ -69,6 +69,13 @@ namespace MiniSync
          */
 
         virtual void __cleanup() = 0;
+
+        /*
+         * Add a new low point and calculate associated constraints
+         */
+        virtual void addLowPoint(us_t Tb, us_t To);
+        virtual void addHighPoint(us_t Tb, us_t Tr);
+        virtual bool addConstraint(LPointPtr lp, HPointPtr hp);
     public:
         /*
          * Add a new DataPoint and recalculate offset and drift.
