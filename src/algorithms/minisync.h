@@ -25,7 +25,7 @@ namespace MiniSync
     // some hash specializations we'll need
     struct ppair_hash
     {
-        std::size_t operator()(const std::pair<MiniSync::LPointPtr, MiniSync::HPointPtr>& pair) const
+        std::size_t operator()(const std::pair<std::shared_ptr<Point>, std::shared_ptr<Point>>& pair) const
         {
             return std::hash<MiniSync::Point>()(*pair.first) ^ std::hash<MiniSync::Point>()(*pair.second);
         }
@@ -106,6 +106,8 @@ namespace MiniSync
     public:
         MiniSyncAlgorithm() = default;
     private:
+        std::unordered_map<std::pair<LPointPtr, LPointPtr>, long double, ppair_hash> low_slopes;
+        std::unordered_map<std::pair<HPointPtr, HPointPtr>, long double, ppair_hash> high_slopes;
         void __cleanup() final;
     };
 }
