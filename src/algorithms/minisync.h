@@ -11,7 +11,7 @@
 #include <chrono>
 #include <tuple>
 #include <exception>
-#include <map>
+#include <unordered_map>
 #include <set>
 #include <memory>
 #include "constraints.h"
@@ -22,12 +22,21 @@ namespace MiniSync
     using HPointPtr = std::shared_ptr<HigherPoint>;
     using ConstraintPtr = std::shared_ptr<ConstraintLine>;
 
+    // some hash specializations we'll need
+    struct ppair_hash
+    {
+        std::size_t operator()(const std::pair<MiniSync::LPointPtr, MiniSync::HPointPtr>& pair) const
+        {
+            return std::hash<MiniSync::Point>()(*pair.first) ^ std::hash<MiniSync::Point>()(*pair.second);
+        }
+    };
+
     class SyncAlgorithm
     {
     protected:
         // constraints
-        std::map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr> low_constraints;
-        std::map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr> high_constraints;
+        std::unordered_map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr, ppair_hash> low_constraints;
+        std::unordered_map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr, ppair_hash> high_constraints;
         std::set<LPointPtr> low_points;
         std::set<HPointPtr> high_points;
 

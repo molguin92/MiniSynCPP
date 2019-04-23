@@ -140,4 +140,13 @@ namespace MiniSync
 
     };
 }
+
+namespace std
+{
+    template<>
+    struct hash<MiniSync::Point>
+    {
+        size_t operator()(const MiniSync::Point& point) const;
+    };
+}
 #endif //MINISYNCPP_CONSTRAINTS_H

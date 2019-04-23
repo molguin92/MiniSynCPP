@@ -7,7 +7,6 @@
 
 #include <cstdlib>
 #include <loguru/loguru.hpp>
-#include <algorithm>
 #include "minisync.h"
 
 long double MiniSync::SyncAlgorithm::getDrift()
@@ -224,4 +223,9 @@ void MiniSync::MiniSyncAlgorithm::__cleanup()
                 this->high_constraints.emplace(pair, tmp_high_cons.at(pair));
         }
     }
+}
+
+size_t std::hash<MiniSync::Point>::operator()(const MiniSync::Point& point) const
+{
+    return std::hash<long double>()(point.getX().count() + point.getY().count());
 }
