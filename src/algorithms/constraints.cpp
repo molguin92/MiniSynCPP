@@ -10,6 +10,8 @@
 #include <loguru/loguru.hpp>
 #include <cstdlib>
 #include "constraints.h"
+#include <string>
+#include <sstream>
 
 bool MiniSync::Point::operator==(const Point& o) const
 {
@@ -30,4 +32,11 @@ MiniSync::ConstraintLine::ConstraintLine(const LowerPoint& p1, const HigherPoint
 bool MiniSync::ConstraintLine::operator==(const ConstraintLine& o) const
 {
     return this->A == o.getA() && this->B == o.getB();
+}
+
+std::string MiniSync::ConstraintLine::toString() const
+{
+    std::ostringstream ss;
+    ss << "ConstraintLine { A=" << this->A << " B=" << this->B.count() << "}" << std::endl;
+    return ss.str();
 }

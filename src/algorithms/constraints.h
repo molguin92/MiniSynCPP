@@ -122,6 +122,8 @@ namespace MiniSync
 
         bool operator==(const ConstraintLine& o) const;
 
+        std::string toString() const;
+
     private:
         long double A;
         us_t B;

@@ -41,22 +41,17 @@ std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::Syn
 
 void MiniSync::SyncAlgorithm::addDataPoint(us_t To, us_t Tb, us_t Tr)
 {
+    // add points to internal storage
+    this->low_points.insert(std::make_shared<LowerPoint>(Tb, To));
+    this->high_points.insert(std::make_shared<HigherPoint>(Tb, Tr));
+    ++this->processed_timestamps;
 
-    if (processed_timestamps == 0)
-    {
-        // first sample
-        ++this->processed_timestamps;
-        this->low_points.emplace(Tb, To);
-        this->high_points.emplace(Tb, Tr);
-    }
-    else
+    if (processed_timestamps > 1)
     {
         // n_th sample, n >= 1
         // pass it on to the specific algorithm
-        ++this->processed_timestamps;
-        this->__recalculateEstimates(LowerPoint(Tb, To), HigherPoint(Tb, Tr));
+        this->__recalculateEstimates();
     }
-
 }
 
 MiniSync::SyncAlgorithm::SyncAlgorithm() :
@@ -90,7 +85,7 @@ diff_factor(std::numeric_limits<long double>::max())
  * Drift_Error = (A_upper - A_lower)/2
  * Offset_Error = (B_upper - B_lower)/2
  */
-void MiniSync::SyncAlgorithm::__recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high)
+void MiniSync::SyncAlgorithm::__recalculateEstimates()
 {
     // assume timestamps come in time order
     //
@@ -108,26 +103,34 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates(const LowerPoint& n_low, co
     // lower lines (a_upper * x + b_lower)
 
     // calculate new possible constraints
-    for (const auto& point: this->low_points)
-        this->low_constraints.emplace(std::make_pair(point, n_high), ConstraintLine(point, n_high));
-    for (const auto& point: this->high_points)
-        this->high_constraints.emplace(std::make_pair(n_low, point), ConstraintLine(n_low, point));
+    us_t low_x;
+    us_t high_x;
+    std::pair<LPointPtr, HPointPtr> pair;
+    for (LPointPtr lp: this->low_points)
+    {
+        for (HPointPtr hp: this->high_points)
+        {
+            low_x = lp->getX();
+            high_x = hp->getX();
+            pair = std::make_pair(lp, hp);
 
-    // add new points to collection
-    this->low_points.insert(n_low);
-    this->high_points.insert(n_high);
+            if (low_x == high_x) continue;
+            else if (low_x < high_x && this->low_constraints.count(pair) == 0)
+                this->low_constraints.emplace(pair, std::make_shared<ConstraintLine>(*lp, *hp));
+            else if (low_x > high_x && this->high_constraints.count(pair) == 0)
+                this->high_constraints.emplace(pair, std::make_shared<ConstraintLine>(*lp, *hp));
+        }
+    }
 
     us_t tmp_diff;
-    ConstraintLine tmp_low;
-    ConstraintLine tmp_high;
     for (const auto& iter_low: this->low_constraints)
     {
         for (const auto& iter_high: this->high_constraints)
         {
-            tmp_low = iter_low.second;
-            tmp_high = iter_high.second;
+            ConstraintPtr tmp_low = iter_low.second;
+            ConstraintPtr tmp_high = iter_high.second;
 
-            tmp_diff = (tmp_low.getA() - tmp_high.getA()) * (tmp_high.getB() - tmp_low.getB());
+            tmp_diff = (tmp_low->getA() - tmp_high->getA()) * (tmp_high->getB() - tmp_low->getB());
             if (tmp_diff < this->diff_factor)
             {
                 this->diff_factor = tmp_diff;
@@ -143,10 +146,10 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates(const LowerPoint& n_low, co
 
     this->__cleanup();
 
-    this->currentDrift.value = (current_low.getA() + current_high.getA()) / 2;
-    this->currentOffset.value = (current_low.getB() + current_high.getB()) / 2;
-    this->currentDrift.error = (current_low.getA() - current_high.getA()) / 2;
-    this->currentOffset.error = (current_high.getB() - current_low.getB()) / 2;
+    this->currentDrift.value = (current_low->getA() + current_high->getA()) / 2;
+    this->currentOffset.value = (current_low->getB() + current_high->getB()) / 2;
+    this->currentDrift.error = (current_low->getA() - current_high->getA()) / 2;
+    this->currentOffset.error = (current_high->getB() - current_low->getB()) / 2;
 
     CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
 }
@@ -179,9 +182,9 @@ void MiniSync::TinySyncAlgorithm::__cleanup()
         {
             auto pair = std::make_pair(l_point, h_point);
             if (tmp_low_cons.count(pair) > 0)
-                this->low_constraints.emplace(pair, tmp_low_cons.at(pair));
+                this->low_constraints[pair] = tmp_low_cons.at(pair);
             else if (tmp_high_cons.count(pair) > 0)
-                this->high_constraints.emplace(pair, tmp_high_cons.at(pair));
+                this->high_constraints[pair] = tmp_high_cons.at(pair);
         }
     }
 }

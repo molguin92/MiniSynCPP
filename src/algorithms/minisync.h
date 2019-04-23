@@ -8,29 +8,33 @@
 #ifndef TINYSYNC___MINISYNC_H
 #define TINYSYNC___MINISYNC_H
 
-# include <chrono>
-# include <tuple>
-# include <exception>
-# include <map>
-# include <set>
+#include <chrono>
+#include <tuple>
+#include <exception>
+#include <map>
+#include <set>
+#include <memory>
 #include "constraints.h"
 
 namespace MiniSync
-{ ;
+{
+    using LPointPtr = std::shared_ptr<LowerPoint>;
+    using HPointPtr = std::shared_ptr<HigherPoint>;
+    using ConstraintPtr = std::shared_ptr<ConstraintLine>;
 
     class SyncAlgorithm
     {
     protected:
         // constraints
-        std::map<std::pair<LowerPoint, HigherPoint>, ConstraintLine> low_constraints;
-        std::map<std::pair<LowerPoint, HigherPoint>, ConstraintLine> high_constraints;
-        std::set<LowerPoint> low_points;
-        std::set<HigherPoint> high_points;
+        std::map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr> low_constraints;
+        std::map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr> high_constraints;
+        std::set<LPointPtr> low_points;
+        std::set<HPointPtr> high_points;
 
-        ConstraintLine current_high;
-        ConstraintLine current_low;
-        std::pair<LowerPoint, HigherPoint> current_high_pts;
-        std::pair<LowerPoint, HigherPoint> current_low_pts;
+        ConstraintPtr current_high;
+        ConstraintPtr current_low;
+        std::pair<LPointPtr, HPointPtr> current_high_pts;
+        std::pair<LPointPtr, HPointPtr> current_low_pts;
 
         struct
         {
@@ -49,7 +53,7 @@ namespace MiniSync
 
         SyncAlgorithm();
 
-        void __recalculateEstimates(const LowerPoint& n_low, const HigherPoint& n_high);
+        void __recalculateEstimates();
 
         /*
          * Subclasses need to override this function with their own cleanup method.
