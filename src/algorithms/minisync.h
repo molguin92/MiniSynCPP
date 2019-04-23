@@ -71,7 +71,7 @@ namespace MiniSync
         /*
          * Get the current estimated relative clock offset in nanoseconds.
          */
-        us_t getOffsetNanoSeconds();
+        us_t getOffset();
         us_t getOffsetError();
 
         /*

@@ -253,7 +253,7 @@ void MiniSync::SyncNode::sync()
 
             auto drift = algo->getDrift();
             auto drift_error = algo->getDriftError();
-            auto offset = algo->getOffsetNanoSeconds();
+            auto offset = algo->getOffset();
             auto offset_error = algo->getOffsetError();
 
             auto

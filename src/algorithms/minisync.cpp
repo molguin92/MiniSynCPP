@@ -20,7 +20,7 @@ long double MiniSync::SyncAlgorithm::getDriftError()
     return this->currentDrift.error;
 }
 
-MiniSync::us_t MiniSync::SyncAlgorithm::getOffsetNanoSeconds()
+MiniSync::us_t MiniSync::SyncAlgorithm::getOffset()
 {
     return this->currentOffset.value;
 }
