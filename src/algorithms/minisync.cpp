@@ -265,11 +265,34 @@ MiniSync::LPointPtr MiniSync::MiniSyncAlgorithm::addLowPoint(MiniSync::us_t Tb, 
     long double M;
     for (LPointPtr olp: this->low_points)
     {
-        // lp is always the newest pointer, put it at the end
+        if (lp->getX() == olp->getX()) continue; //avoid division by 0...
+
+        // hp is always the newest pointer, put it as the second element of the pair always
         pair = std::make_pair(olp, lp);
         M = (lp->getY() - olp->getY()) / (lp->getX() - olp->getX());
         low_slopes.emplace(pair, M);
     }
+
+    return lp;
+}
+
+MiniSync::HPointPtr MiniSync::MiniSyncAlgorithm::addHighPoint(MiniSync::us_t Tb, MiniSync::us_t Tr)
+{
+    auto hp = SyncAlgorithm::addHighPoint(Tb, Tr);
+    // calculate the slopes for the minisync algo
+    std::pair<HPointPtr, HPointPtr> pair;
+    long double M;
+    for (HPointPtr ohp: this->high_points)
+    {
+        if (hp->getX() == ohp->getX()) continue; //avoid division by 0...
+
+        // hp is always the newest pointer, put it as the second element of the pair always
+        pair = std::make_pair(ohp, hp);
+        M = (hp->getY() - ohp->getY()) / (hp->getX() - ohp->getX());
+        high_slopes.emplace(pair, M);
+    }
+
+    return hp;
 }
 
 size_t std::hash<MiniSync::Point>::operator()(const MiniSync::Point& point) const
