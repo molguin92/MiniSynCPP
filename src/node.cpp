@@ -2,7 +2,7 @@
 
 /*
 * Author: Manuel Olguín Muñoz <manuel@olguin.se>
-* 
+*
 * Copyright© 2019 Manuel Olguín Muñoz
 * See LICENSE file included in the root directory of this project for licensing and copyright details.
 */
@@ -209,6 +209,7 @@ void MiniSync::SyncNode::sync()
 
     while (this->running.load())
     {
+        auto t_i = std::chrono::steady_clock::now();
         auto* beacon = new MiniSync::Protocol::Beacon{};
         beacon->set_seq(seq);
         msg.set_allocated_beacon(beacon);
@@ -245,8 +246,8 @@ void MiniSync::SyncNode::sync()
             tbr = us_t{std::chrono::nanoseconds{reply.beacon_recv_time()}};
             tbt = us_t{std::chrono::nanoseconds{reply.reply_send_time()}};
 
-            LOG_F(INFO, "Timestamps:\nto=\t%Lf\ntbr=\t%Lf\ntbt=\t%Lf\ntr=\t%Lf",
-                  to.count(), tbr.count(), tbt.count(), tr.count());
+            //LOG_F(INFO, "Timestamps:\nto=\t%Lf\ntbr=\t%Lf\ntbt=\t%Lf\ntr=\t%Lf",
+            //      to.count(), tbr.count(), tbt.count(), tr.count());
 
             this->algo->addDataPoint(to, tbr, tr);
             this->algo->addDataPoint(to, tbt, tr);
@@ -269,8 +270,8 @@ void MiniSync::SyncNode::sync()
             seq++;
             msg.Clear();
             // msg handles clearing beacon
-
-            std::this_thread::sleep_for(std::chrono::milliseconds(100)); // TODO: parameterize
+            auto t_f = std::chrono::steady_clock::now();
+            std::this_thread::sleep_for(std::chrono::milliseconds(100) - (t_f - t_i)); // TODO: parameterize
         }
             // only catch exceptions that we can work with
         catch (MiniSync::Exceptions::TimeoutException& e)
