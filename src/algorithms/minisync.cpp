@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <loguru/loguru.hpp>
 #include "minisync.h"
+#include "../../../../../../opt/cross-pi-gcc-8.3.0-2/arm-linux-gnueabihf/include/fmtmsg.h"
 #include <algorithm>
 
 long double MiniSync::SyncAlgorithm::getDrift()
@@ -34,8 +35,8 @@ std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::Syn
 {
     auto t_now = std::chrono::system_clock::now().time_since_epoch();
     return std::chrono::time_point<std::chrono::system_clock, us_t>{
-    this->currentDrift.value * t_now +
-    this->currentOffset.value
+        this->currentDrift.value * t_now +
+        this->currentOffset.value
     };
 }
 
@@ -58,8 +59,8 @@ void MiniSync::SyncAlgorithm::addDataPoint(us_t To, us_t Tb, us_t Tr)
 }
 
 MiniSync::SyncAlgorithm::SyncAlgorithm() :
-processed_timestamps(0),
-diff_factor(std::numeric_limits<long double>::max())
+    processed_timestamps(0),
+    diff_factor(std::numeric_limits<long double>::max())
 {
 }
 
@@ -119,10 +120,10 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates()
                 this->diff_factor = tmp_diff;
 
                 this->current_low = tmp_low;
-                this->current_low_pts = iter_low.first;
+                this->low_constraint_pts = iter_low.first;
 
                 this->current_high = tmp_high;
-                this->current_high_pts = iter_high.first;
+                this->high_constraint_pts = iter_high.first;
             }
         }
     }
@@ -194,7 +195,7 @@ void MiniSync::TinySyncAlgorithm::__cleanup()
     // cleanup
     for (auto iter = low_points.begin(); iter != low_points.end();)
     {
-        if (current_low_pts.first != *iter && current_high_pts.first != *iter)
+        if (low_constraint_pts.first != *iter && high_constraint_pts.first != *iter)
             iter = low_points.erase(iter);
         else
             ++iter;
@@ -202,7 +203,7 @@ void MiniSync::TinySyncAlgorithm::__cleanup()
 
     for (auto iter = high_points.begin(); iter != high_points.end();)
     {
-        if (current_low_pts.second != *iter && current_high_pts.second != *iter)
+        if (low_constraint_pts.second != *iter && high_constraint_pts.second != *iter)
             iter = high_points.erase(iter);
         else
             ++iter;
@@ -226,20 +227,108 @@ void MiniSync::TinySyncAlgorithm::__cleanup()
 void MiniSync::MiniSyncAlgorithm::__cleanup()
 {
     // cleanup
-    for (auto iter = low_points.begin(); iter != low_points.end();)
+    for (auto iter_j = low_points.begin(); iter_j != low_points.end();)
     {
-        if (current_low_pts.first != *iter && current_high_pts.first != *iter)
-            iter = low_points.erase(iter);
+        if (low_constraint_pts.first != *iter_j && high_constraint_pts.first != *iter_j)
+        {
+            // low point is not one of the current constraint low points
+            // now we compare the slopes with each other point to see if we store it for future use or not
+            // if current point is Aj, compare each M(Ai, Aj) with M(Aj, Ak)
+            // store point Aj only iff there exists
+            // M(Ai, Aj) > M(Aj, Ak) for 0 <= i < j < k <= total number of points.
+            bool store = false;
+            for (auto iter_i = low_points.begin(); iter_i != iter_j; ++iter_i)
+            {
+                for (auto iter_k = std::next(iter_j, 1); iter_k != low_points.end(); ++iter_k)
+                {
+                    if (low_slopes.at(std::make_pair(*iter_i, *iter_j))
+                        > low_slopes.at(std::make_pair(*iter_j, *iter_k)))
+                    {
+                        store = true;
+                        break;
+                    }
+                }
+
+                if (store) break;
+            }
+
+            if (!store)
+            {
+                // delete all associated slopes then delete the point
+                for (auto iter_slope = low_slopes.begin(); iter_slope != low_slopes.end();)
+                {
+                    if (iter_slope->first.first == *iter_j || iter_slope->first.second == *iter_j)
+                        iter_slope = low_slopes.erase(iter_slope);
+                    else ++iter_slope;
+                }
+                iter_j = low_points.erase(iter_j);
+            }
+            else
+                ++iter_j;
+        }
         else
-            ++iter;
+            ++iter_j;
     }
 
-    for (auto iter = high_points.begin(); iter != high_points.end();)
+    // done same thing for high points
+    for (auto iter_j = high_points.begin(); iter_j != high_points.end();)
     {
-        if (current_low_pts.second != *iter && current_high_pts.second != *iter)
-            iter = high_points.erase(iter);
+        if (low_constraint_pts.second != *iter_j && high_constraint_pts.second != *iter_j)
+        {
+            // high point is not one of the current constraint high points
+            // now we compare the slopes with each other point to see if we store it for future use or not
+            // if current point is Aj, compare each M(Ai, Aj) with M(Aj, Ak)
+            // store point Aj only iff there exists
+            // M(Ai, Aj) < M(Aj, Ak) for 0 <= i < j < k <= total number of points. This is the inverse condition as
+            // the low points.
+            bool store = false;
+            for (auto iter_i = high_points.begin(); iter_i != iter_j; ++iter_i)
+            {
+                for (auto iter_k = std::next(iter_j, 1); iter_k != high_points.end(); ++iter_k)
+                {
+                    try
+                    {
+                        if (high_slopes.at(std::make_pair(*iter_i, *iter_j))
+                            < high_slopes.at(std::make_pair(*iter_j, *iter_k)))
+                        {
+                            store = true;
+                            break;
+                        }
+                    }
+                    catch (std::out_of_range& e)
+                    {
+                        DLOG_F(WARNING, "iter_i: (%Lf, %Lf)",
+                               iter_i->get()->getX().count(),
+                               iter_i->get()->getY().count());
+                        DLOG_F(WARNING, "iter_j: (%Lf, %Lf)",
+                               iter_j->get()->getX().count(),
+                               iter_j->get()->getY().count());
+                        DLOG_F(WARNING, "iter_k: (%Lf, %Lf)",
+                               iter_k->get()->getX().count(),
+                               iter_k->get()->getY().count());
+                        throw;
+                    }
+                }
+
+                if (store) break;
+            }
+
+            if (!store)
+            {
+                // delete all associated slopes then delete the point
+                for (auto iter_slope = high_slopes.begin(); iter_slope != high_slopes.end();)
+                {
+                    if (iter_slope->first.first == *iter_j || iter_slope->first.second == *iter_j)
+                        iter_slope = high_slopes.erase(iter_slope);
+                    else ++iter_slope;
+                }
+                iter_j = high_points.erase(iter_j);
+            }
+            else
+                ++iter_j;
+        }
         else
-            ++iter;
+            ++iter_j;
     }
 
     auto tmp_low_cons = std::move(this->low_constraints);

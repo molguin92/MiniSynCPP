@@ -31,19 +31,36 @@ namespace MiniSync
         }
     };
 
+    // some comparison operations for sets of pointers to Points
+    struct lppoint_compare
+    {
+        bool operator()(const LPointPtr& lhs, const LPointPtr& rhs)
+        {
+            return *lhs < *rhs;
+        }
+    };
+
+    struct hppoint_compare
+    {
+        bool operator()(const HPointPtr& lhs, const HPointPtr& rhs)
+        {
+            return *lhs < *rhs;
+        }
+    };
+
     class SyncAlgorithm
     {
     protected:
         // constraints
         std::unordered_map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr, ppair_hash> low_constraints;
         std::unordered_map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr, ppair_hash> high_constraints;
-        std::set<LPointPtr> low_points;
-        std::set<HPointPtr> high_points;
+        std::set<LPointPtr, lppoint_compare> low_points;
+        std::set<HPointPtr, hppoint_compare> high_points;
 
         ConstraintPtr current_high;
         ConstraintPtr current_low;
-        std::pair<LPointPtr, HPointPtr> current_high_pts;
-        std::pair<LPointPtr, HPointPtr> current_low_pts;
+        std::pair<LPointPtr, HPointPtr> high_constraint_pts;
+        std::pair<LPointPtr, HPointPtr> low_constraint_pts;
 
         struct
         {

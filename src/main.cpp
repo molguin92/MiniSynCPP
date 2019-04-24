@@ -67,7 +67,7 @@ int main(int argc, char* argv[])
         // LOG_F(INFO, "Started node in SYNCHRONIZATION mode.");
 
         node = new MiniSync::SyncNode(bind_port, peer, port,
-                                      std::unique_ptr<MiniSync::SyncAlgorithm>(new MiniSync::TinySyncAlgorithm()),
+                                      std::unique_ptr<MiniSync::SyncAlgorithm>(new MiniSync::MiniSyncAlgorithm()),
                                       output_file);
     }
     else
