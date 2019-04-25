@@ -12,7 +12,7 @@ if __name__ == '__main__':
                     df['Drift'] + df['Drift Error'],
                     color='gray', alpha=0.2)
     ax.legend()
-    ax.set_yscale('symlog', basey=10)
+    # ax.set_yscale('symlog', basey=10)
     ax.set_xscale('symlog', basex=10)
     plt.show()
     fig.savefig('drift.png')
@@ -26,7 +26,7 @@ if __name__ == '__main__':
                     offsets_ms - e_offsets_ms,
                     offsets_ms + e_offsets_ms,
                     color='gray', alpha=0.2)
-    ax.set_yscale('symlog', basey=10)
+    # ax.set_yscale('symlog', basey=10)
     ax.set_xscale('symlog', basex=10)
     ax.legend()
     plt.show()

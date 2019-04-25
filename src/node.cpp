@@ -25,7 +25,7 @@
 #endif
 
 MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
-bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode), running(true)
+    bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode), running(true), minimum_delay(0)
 {
     this->sock_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     int enable = 1;
@@ -37,11 +37,97 @@ bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode), running(true)
     this->local_addr.sin_port = htons(bind_port);
 
     LOG_F(INFO, "Binding UDP socket to port %"
-    PRIu16
-    "", this->bind_port);
+        PRIu16
+        "", this->bind_port);
     CHECK_GE_F(bind(this->sock_fd, (struct sockaddr*) &this->local_addr, sizeof(this->local_addr)), 0,
                "Failed to bind socket to UDP port %"
-               PRIu16, bind_port);
+                   PRIu16, bind_port);
+
+    // estimate minimum possible delay by looping messages on the loopback interface
+    int loop_in_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    int loop_out_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+    uint16_t loopback_port = 5555; // TODO: Parametrize hardcoded port
+    uint_fast32_t num_samples = 250; // TODO: parametrize
+
+    setsockopt(loop_in_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+    setsockopt(loop_out_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
+
+    sockaddr_in loopback_addr{0x00};
+    memset(&loopback_addr, 0, sizeof(loopback_addr));
+    loopback_addr.sin_family = AF_INET;
+    inet_aton("127.0.0.1", &loopback_addr.sin_addr);
+    loopback_addr.sin_port = htons(loopback_port);
+
+    CHECK_GE_F(bind(loop_in_fd, (struct sockaddr*) &loopback_addr, sizeof(loopback_addr)), 0,
+               "Failed to bind UDP socket to loopback interface, port %d", loopback_port);
+
+    // estimate
+    // 1. set up payload
+    srand(time(nullptr));
+    MiniSync::Protocol::MiniSyncMsg payload;
+    payload.set_allocated_beacon_r(new MiniSync::Protocol::BeaconReply{});
+    payload.mutable_beacon_r()->set_seq(rand() % UINT8_MAX + 1);
+    payload.mutable_beacon_r()->set_reply_send_time(std::chrono::nanoseconds{rand() % UINT64_MAX + 1}.count());
+    payload.mutable_beacon_r()->set_beacon_recv_time(std::chrono::nanoseconds{rand() % UINT64_MAX + 1}.count());
+    size_t payload_sz = payload.ByteSizeLong();
+    uint8_t payload_b[payload_sz];
+    payload.SerializeToArray(&payload_b, payload_sz);
+
+    // 2. set up a separate thread for echoing messages
+    std::thread t([loop_in_fd, loop_out_fd, payload_sz, num_samples]()
+                  {
+                      uint8_t incoming[payload_sz];
+                      sockaddr_in reply_to{};
+                      socklen_t reply_to_len = sizeof(sockaddr_in);
+                      for (int_fast32_t i = 0; i < num_samples; ++i)
+                      {
+                          // read incoming
+                          CHECK_GE_F(recvfrom(loop_in_fd, incoming, payload_sz, 0,
+                                              (sockaddr*) &reply_to, &reply_to_len), 0,
+                                     "Error reading from socket on loopback interface...");
+                          // send it right back...
+                          CHECK_GE_F(sendto(loop_in_fd, incoming, payload_sz, 0,
+                                            (sockaddr*) &reply_to, reply_to_len), 0,
+                                     "Error writing to socket on loopback interface.");
+                      }
+                  });
+
+    // 3. measure
+    // us_t samples[num_samples];
+    us_t min_delay{std::numeric_limits<long double>::max()};
+    us_t rtt;
+    std::chrono::time_point<std::chrono::steady_clock> ti, tf;
+    socklen_t addr_sz = sizeof(sockaddr_in);
+    uint8_t incoming[payload_sz];
+    sockaddr_in reply_to{};
+    socklen_t reply_to_len = sizeof(sockaddr_in);
+    for (int_fast32_t i = 0; i < num_samples; ++i)
+    {
+        ti = std::chrono::steady_clock::now();
+        // send payload
+        CHECK_GE_F(sendto(loop_out_fd, payload_b, payload_sz, 0,
+                          (sockaddr*) &loopback_addr, addr_sz), 0,
+                   "Error writing to socket on loopback interface.");
+        // get it back
+        CHECK_GE_F(recvfrom(loop_out_fd, incoming, payload_sz, 0,
+                            (sockaddr*) &reply_to, &reply_to_len), 0,
+                   "Error reading from socket on loopback interface...");
+        tf = std::chrono::steady_clock::now();
+        rtt = std::chrono::duration_cast<us_t>(tf - ti);
+
+        // we only care about storing the absolute minimum possible delay
+        // also, divide rtt by 2.0 since it includes delays for the message passing through the network stack twice
+        min_delay = std::min(rtt / 2.0, min_delay);
+    }
+    t.join();
+
+    LOG_F(INFO, "Minimum latency through the network stack: %Lf µs", min_delay.count());
+    shutdown(loop_in_fd, SHUT_RDWR);
+    shutdown(loop_out_fd, SHUT_RDWR);
+    close(loop_in_fd);
+    close(loop_out_fd);
+
+    this->minimum_delay = min_delay;
 }
 
 MiniSync::Node::~Node()
@@ -62,8 +148,8 @@ MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockadd
     msg.SerializeToArray(reply_buf, out_sz);
 
     DLOG_F(INFO, "Sending a message of size %"
-    PRISIZE_T
-    " bytes...", out_sz);
+        PRISIZE_T
+        " bytes...", out_sz);
 
     us_t timestamp = std::chrono::steady_clock::now() - start; // timestamp BEFORE passing on to network stack
     if (sendto(this->sock_fd, reply_buf, out_sz, 0, dest, sizeof(*dest)) != out_sz)
@@ -73,8 +159,8 @@ MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockadd
     }
 
     DLOG_F(INFO, "Sent a message of size %"
-    PRISIZE_T
-    " bytes with timestamp %Lf µs...", out_sz, timestamp.count());
+        PRISIZE_T
+        " bytes with timestamp %Lf µs...", out_sz, timestamp.count());
     return timestamp;
 }
 
@@ -103,8 +189,8 @@ MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockad
     us_t timestamp = std::chrono::steady_clock::now() - start; // timestamp after receiving whole message
 
     DLOG_F(INFO, "Got %"
-    PRISIZE_T
-    " bytes of data at time %Lf µs.", recv_sz, timestamp.count());
+        PRISIZE_T
+        " bytes of data at time %Lf µs.", recv_sz, timestamp.count());
     // deserialize buffer into a protobuf message
     if (!msg.ParseFromArray(buf, recv_sz))
     {
@@ -128,6 +214,15 @@ void MiniSync::SyncNode::run()
     this->sync();
 }
 
+/*
+ * Simply listens for incoming beacons and replies accordingly.
+ */
+void MiniSync::ReferenceNode::run()
+{
+    this->wait_for_handshake();
+    this->serve();
+}
+
 void MiniSync::SyncNode::handshake()
 {
     // send handshake request to peer
@@ -146,8 +241,8 @@ void MiniSync::SyncNode::handshake()
         try
         {
             LOG_F(INFO, "Initializing handshake with peer %s:%"
-            PRIu16
-            ".", this->peer.c_str(), this->peer_port);
+                PRIu16
+                ".", this->peer.c_str(), this->peer_port);
             this->send_message(msg, (struct sockaddr*) &this->peer_addr);
             // wait for handshake response
             this->recv_message(incoming, (struct sockaddr*) &this->peer_addr);
@@ -166,7 +261,7 @@ void MiniSync::SyncNode::handshake()
                     // if success, we can "connect" the socket and move on to actually synchronizing.
                     CHECK_GE_F(connect(this->sock_fd, (struct sockaddr*) &this->peer_addr, sizeof(this->peer_addr)), 0,
                                "Failed connecting socket to peer %s:%"
-                               PRIu16, this->peer.c_str(), this->peer_port);
+                                   PRIu16, this->peer.c_str(), this->peer_port);
                     // "start" local clock
                     this->start = std::chrono::steady_clock::now();
                     return;
@@ -215,8 +310,8 @@ void MiniSync::SyncNode::sync()
         msg.set_allocated_beacon(beacon);
 
         LOG_F(INFO, "Sending beacon (SEQ %"
-        PRIu8
-        ").", seq);
+            PRIu8
+            ").", seq);
 
         try
         {
@@ -258,8 +353,8 @@ void MiniSync::SyncNode::sync()
             auto offset_error = algo->getOffsetError();
 
             auto
-            adj_timestamp =
-            std::chrono::duration_cast<us_t>(algo->getCurrentAdjustedTime().time_since_epoch());
+                adj_timestamp =
+                std::chrono::duration_cast<us_t>(algo->getCurrentAdjustedTime().time_since_epoch());
 
             LOG_F(INFO, "Current adjusted timestamp: %Lf µs", adj_timestamp.count());
             LOG_F(INFO, "Drift: %Lf | Error: +/- %Lf", drift, drift_error);
@@ -294,13 +389,13 @@ MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              uint16_t peer_port,
                              std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo,
                              std::string stat_file_path) :
-Node(bind_port, MiniSync::Protocol::NodeMode::SYNC),
-algo(std::move(sync_algo)), // take ownership of algorithm
-peer(peer),
-peer_port(peer_port),
-peer_addr({}),
-stats({}),
-stat_file_path(std::move(stat_file_path))
+    Node(bind_port, MiniSync::Protocol::NodeMode::SYNC),
+    algo(std::move(sync_algo)), // take ownership of algorithm
+    peer(peer),
+    peer_port(peer_port),
+    peer_addr({}),
+    stats({}),
+    stat_file_path(std::move(stat_file_path))
 {
     LOG_F(INFO, "Initializing SyncNode.");
     // set up peer addr
@@ -324,15 +419,6 @@ MiniSync::SyncNode::~SyncNode()
     {
         this->stats.write_csv(this->stat_file_path);
     }
-}
-
-/*
- * Simply listens for incoming beacons and replies accordingly.
- */
-void MiniSync::ReferenceNode::run()
-{
-    this->wait_for_handshake();
-    this->serve();
 }
 
 void MiniSync::ReferenceNode::serve()
@@ -361,12 +447,13 @@ void MiniSync::ReferenceNode::serve()
                 reply->set_beacon_recv_time(std::chrono::duration_cast<std::chrono::nanoseconds>(recv_time).count());
 
                 LOG_F(INFO, "Received a beacon (SEQ %"
-                PRIu8
-                ").", beacon.seq());
+                    PRIu8
+                    ").", beacon.seq());
 
                 outgoing.set_allocated_beacon_r(reply);
                 reply->set_reply_send_time(
-                std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now() - start).count()
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now() - start).count()
                 );
 
                 LOG_F(INFO, "Replying to beacon.");
@@ -425,13 +512,13 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                 {
                     LOG_F(WARNING, "Handshake: Version mismatch.");
                     LOG_F(WARNING, "Local version: %"
-                    PRIu8
-                    ".%"
-                    PRIu8
-                    " - Remote version: %"
-                    PRIu8
-                    ".%"
-                    PRIu8,
+                        PRIu8
+                        ".%"
+                        PRIu8
+                        " - Remote version: %"
+                        PRIu8
+                        ".%"
+                        PRIu8,
                           Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
                           handshake.version_major(), handshake.version_minor());
                     reply->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
@@ -473,7 +560,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
 }
 
 MiniSync::ReferenceNode::ReferenceNode(uint16_t bind_port) :
-Node(bind_port, MiniSync::Protocol::NodeMode::REFERENCE)
+    Node(bind_port, MiniSync::Protocol::NodeMode::REFERENCE)
 {
     LOG_F(INFO, "Initializing ReferenceNode.");
 }

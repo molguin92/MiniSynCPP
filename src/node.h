@@ -1,6 +1,6 @@
 /*
 * Author: Manuel Olguín Muñoz <manuel@olguin.se>
-* 
+*
 * Copyright© 2019 Manuel Olguín Muñoz
 * See LICENSE file included in the root directory of this project for licensing and copyright details.
 */
@@ -30,12 +30,14 @@ namespace MiniSync
         SOCKADDR local_addr;
         const MiniSync::Protocol::NodeMode mode;
         std::atomic_bool running;
+        us_t minimum_delay;
 
         Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode);
 
         us_t send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest);
         us_t recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to);
 
+        void estimate_minimum_delay();
     public:
         virtual void run() = 0;
         virtual void shut_down();
