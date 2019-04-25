@@ -65,10 +65,11 @@ MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
     // 1. set up payload
     srand(time(nullptr));
     MiniSync::Protocol::MiniSyncMsg payload;
-    payload.set_allocated_beacon_r(new MiniSync::Protocol::BeaconReply{});
-    payload.mutable_beacon_r()->set_seq(rand() % UINT8_MAX + 1);
-    payload.mutable_beacon_r()->set_reply_send_time(std::chrono::nanoseconds{rand() % UINT64_MAX + 1}.count());
-    payload.mutable_beacon_r()->set_beacon_recv_time(std::chrono::nanoseconds{rand() % UINT64_MAX + 1}.count());
+    // use beacon, as it's smaller than a reply and we only care about minimums
+    payload.set_allocated_beacon(new MiniSync::Protocol::Beacon{});
+    payload.mutable_beacon()->set_seq(rand() % UINT8_MAX + 1);
+    //payload.mutable_beacon_r()->set_reply_send_time(std::chrono::nanoseconds{rand() % UINT64_MAX + 1}.count());
+    //payload.mutable_beacon_r()->set_beacon_recv_time(std::chrono::nanoseconds{rand() % UINT64_MAX + 1}.count());
     size_t payload_sz = payload.ByteSizeLong();
     uint8_t payload_b[payload_sz];
     payload.SerializeToArray(&payload_b, payload_sz);
