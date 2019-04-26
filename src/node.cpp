@@ -1,5 +1,3 @@
-#include <utility>
-
 /*
 * Author: Manuel Olguín Muñoz <manuel@olguin.se>
 *
@@ -7,6 +5,7 @@
 * See LICENSE file included in the root directory of this project for licensing and copyright details.
 */
 
+#include <utility>
 #include "node.h"
 #include "net/protocol.h"
 #include "exception.h"
