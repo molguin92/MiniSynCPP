@@ -8,7 +8,6 @@
 #include <cstdlib>
 #include <loguru/loguru.hpp>
 #include "minisync.h"
-#include "../../../../../../opt/cross-pi-gcc-8.3.0-2/arm-linux-gnueabihf/include/fmtmsg.h"
 #include <algorithm>
 
 long double MiniSync::SyncAlgorithm::getDrift()
