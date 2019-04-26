@@ -30,14 +30,17 @@ namespace MiniSync
         SOCKADDR local_addr;
         const MiniSync::Protocol::NodeMode mode;
         std::atomic_bool running;
-        us_t minimum_delay;
+
+        struct
+        {
+            us_t beacon{0};
+            us_t beacon_reply{0};
+        } minimum_delays;
 
         Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode);
 
         us_t send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest);
         us_t recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to);
-
-        void estimate_minimum_delay();
     public:
         virtual void run() = 0;
         virtual void shut_down();

@@ -1,6 +1,6 @@
 /*
 * Author: Manuel Olguín Muñoz <manuel@olguin.se>
-* 
+*
 * Copyright© 2019 Manuel Olguín Muñoz
 * See LICENSE file included in the root directory of this project for licensing and copyright details.
 */
@@ -20,7 +20,7 @@ namespace MiniSync
         static const uint8_t VERSION_MINOR = 1;
 
         // Maximum message length corresponds to the maximum UDP datagram size.
-        static const uint32_t MAX_MSG_LEN = 65507;
+        static const size_t MAX_MSG_LEN = 65507;
     }
 }
 

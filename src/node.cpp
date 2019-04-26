@@ -25,7 +25,7 @@
 #endif
 
 MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
-    bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode), running(true), minimum_delay(0)
+    bind_port(bind_port), local_addr(SOCKADDR{}), mode(mode), running(true)
 {
     this->sock_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     int enable = 1;
@@ -47,7 +47,8 @@ MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
     int loop_in_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     int loop_out_fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
     uint16_t loopback_port = 5555; // TODO: Parametrize hardcoded port
-    uint_fast32_t num_samples = 250; // TODO: parametrize
+    uint_fast32_t total_samples = 5000; // TODO: parametrize
+    uint_fast32_t considered_samples = 1000;
 
     setsockopt(loop_in_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
     setsockopt(loop_out_fd, SOL_SOCKET, SO_REUSEADDR, &enable, sizeof(int));
@@ -62,73 +63,112 @@ MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
                "Failed to bind UDP socket to loopback interface, port %d", loopback_port);
 
     // estimate
-    // 1. set up payload
-    srand(time(nullptr));
-    MiniSync::Protocol::MiniSyncMsg payload;
-    // use beacon, as it's smaller than a reply and we only care about minimums
-    payload.set_allocated_beacon(new MiniSync::Protocol::Beacon{});
-    payload.mutable_beacon()->set_seq(rand() % UINT8_MAX + 1);
-    //payload.mutable_beacon_r()->set_reply_send_time(std::chrono::nanoseconds{rand() % UINT64_MAX + 1}.count());
-    //payload.mutable_beacon_r()->set_beacon_recv_time(std::chrono::nanoseconds{rand() % UINT64_MAX + 1}.count());
-    size_t payload_sz = payload.ByteSizeLong();
-    uint8_t payload_b[payload_sz];
-    payload.SerializeToArray(&payload_b, payload_sz);
-
-    // 2. set up a separate thread for echoing messages
-    std::thread t([loop_in_fd, loop_out_fd, payload_sz, num_samples]()
+    // set a global time reference point for using steady_clock timestamps
+    auto T0 = std::chrono::steady_clock::now();
+    // set up a separate thread for echoing messages
+    std::thread t([loop_in_fd, total_samples, T0]()
                   {
-                      uint8_t incoming[payload_sz];
-                      sockaddr_in reply_to{};
+                      uint8_t in_buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
+                      uint8_t out_buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
+                      sockaddr_in reply_to{0x00};
                       socklen_t reply_to_len = sizeof(sockaddr_in);
-                      for (int_fast32_t i = 0; i < num_samples; ++i)
+                      ssize_t in_msg_len;
+                      ssize_t out_msg_len;
+
+                      MiniSync::Protocol::MiniSyncMsg msg_bcn{};
+                      MiniSync::Protocol::MiniSyncMsg reply{};
+                      reply.set_allocated_beacon_r(new MiniSync::Protocol::BeaconReply{});
+
+                      std::chrono::steady_clock::time_point t_in;
+
+                      for (int_fast32_t i = 0; i < total_samples; ++i)
                       {
                           // read incoming
-                          CHECK_GE_F(recvfrom(loop_in_fd, incoming, payload_sz, 0,
-                                              (sockaddr*) &reply_to, &reply_to_len), 0,
+                          CHECK_GE_F((in_msg_len = recvfrom(loop_in_fd, in_buf, MiniSync::Protocol::MAX_MSG_LEN, 0,
+                                                            (sockaddr*) &reply_to, &reply_to_len)), 0,
                                      "Error reading from socket on loopback interface...");
+                          t_in = std::chrono::steady_clock::now();
+
+                          msg_bcn.ParseFromArray(in_buf, in_msg_len);
+                          reply.mutable_beacon_r()->set_seq(msg_bcn.beacon().seq());
+                          reply.mutable_beacon_r()->set_beacon_recv_time(
+                              std::chrono::duration_cast<std::chrono::nanoseconds>(t_in - T0).count()
+                          );
+                          reply.mutable_beacon_r()->set_reply_send_time(
+                              std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                  std::chrono::steady_clock::now() - T0).count()
+                          );
+
                           // send it right back...
-                          CHECK_GE_F(sendto(loop_in_fd, incoming, payload_sz, 0,
+                          out_msg_len = reply.ByteSizeLong();
+                          reply.SerializeToArray(out_buf, out_msg_len);
+                          CHECK_GE_F(sendto(loop_in_fd, out_buf, out_msg_len, 0,
                                             (sockaddr*) &reply_to, reply_to_len), 0,
                                      "Error writing to socket on loopback interface.");
+
+                          // cleanup
+                          memset(in_buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
+                          memset(out_buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
+                          memset(&reply_to, 0x00, reply_to_len);
                       }
                   });
 
-    // 3. measure
-    // us_t samples[num_samples];
-    us_t min_delay{std::numeric_limits<long double>::max()};
-    us_t rtt;
-    std::chrono::time_point<std::chrono::steady_clock> ti, tf;
-    socklen_t addr_sz = sizeof(sockaddr_in);
-    uint8_t incoming[payload_sz];
-    sockaddr_in reply_to{};
-    socklen_t reply_to_len = sizeof(sockaddr_in);
-    for (int_fast32_t i = 0; i < num_samples; ++i)
-    {
-        ti = std::chrono::steady_clock::now();
-        // send payload
-        CHECK_GE_F(sendto(loop_out_fd, payload_b, payload_sz, 0,
-                          (sockaddr*) &loopback_addr, addr_sz), 0,
-                   "Error writing to socket on loopback interface.");
-        // get it back
-        CHECK_GE_F(recvfrom(loop_out_fd, incoming, payload_sz, 0,
-                            (sockaddr*) &reply_to, &reply_to_len), 0,
-                   "Error reading from socket on loopback interface...");
-        tf = std::chrono::steady_clock::now();
-        rtt = std::chrono::duration_cast<us_t>(tf - ti);
+    // measure
+    MiniSync::Protocol::MiniSyncMsg bcn_msg{};
+    MiniSync::Protocol::MiniSyncMsg rpl_msg{};
+    bcn_msg.set_allocated_beacon(new MiniSync::Protocol::Beacon{});
+    uint8_t beacon_buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
+    uint8_t reply_buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
+    ssize_t out_sz, in_sz;
 
-        // we only care about storing the absolute minimum possible delay
-        // also, divide rtt by 2.0 since it includes delays for the message passing through the network stack twice
-        min_delay = std::min(rtt / 2.0, min_delay);
+    us_t min_bcn_delay{std::numeric_limits<long double>::max()};
+    us_t min_rpl_delay{std::numeric_limits<long double>::max()};
+    std::chrono::steady_clock::duration t_out, t_in;
+    socklen_t addr_sz = sizeof(sockaddr_in);
+    for (int_fast32_t i = 0; i < total_samples; ++i)
+    {
+        bcn_msg.mutable_beacon()->set_seq(i % UINT8_MAX);
+        out_sz = bcn_msg.ByteSizeLong();
+        bcn_msg.SerializeToArray(beacon_buf, out_sz);
+        t_out = std::chrono::steady_clock::now() - T0;
+        // send payload
+        CHECK_GE_F(sendto(loop_out_fd, beacon_buf, out_sz, 0, (sockaddr*) &loopback_addr, addr_sz), 0,
+                   "Error writing to socket on loopback interface.");
+
+        // get reply
+        CHECK_GE_F((in_sz = recvfrom(loop_out_fd, reply_buf, MiniSync::Protocol::MAX_MSG_LEN, 0, nullptr, nullptr)), 0,
+                   "Error reading from socket on loopback interface...");
+        t_in = std::chrono::steady_clock::now() - T0;
+        rpl_msg.ParseFromArray(reply_buf, in_sz);
+
+        if (i >= total_samples - considered_samples)
+        {
+            // only consider the last n samples, to give the processor some time to spin up
+            // TODO: parametrize number of considered samples and total number of samples
+            // delays include both the delay through the network stack on the way out and on the way in, so divide by 2.0
+            // we assume symmetric delays
+            auto bcn_delay = (std::chrono::nanoseconds{rpl_msg.beacon_r().beacon_recv_time()} - t_out) / 2.0;
+            auto rpl_delay = (t_in - std::chrono::nanoseconds{rpl_msg.beacon_r().reply_send_time()}) / 2.0;
+            min_bcn_delay = std::min(std::chrono::duration_cast<us_t>(bcn_delay), min_bcn_delay);
+            min_rpl_delay = std::min(std::chrono::duration_cast<us_t>(rpl_delay), min_rpl_delay);
+        }
+
+        // cleanup
+        memset(beacon_buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
+        memset(reply_buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
     }
     t.join();
 
-    LOG_F(INFO, "Minimum latency through the network stack: %Lf µs", min_delay.count());
+    this->minimum_delays.beacon = min_bcn_delay;
+    this->minimum_delays.beacon_reply = min_rpl_delay;
+
+    LOG_F(INFO, "Minimum latencies through the network stack:");
+    LOG_F(INFO, "Beacons: %Lf µs", min_bcn_delay.count());
+    LOG_F(INFO, "Beacon replies: %Lf µs", min_rpl_delay.count());
     shutdown(loop_in_fd, SHUT_RDWR);
     shutdown(loop_out_fd, SHUT_RDWR);
     close(loop_in_fd);
     close(loop_out_fd);
-
-    this->minimum_delay = min_delay;
 }
 
 MiniSync::Node::~Node()
@@ -342,9 +382,11 @@ void MiniSync::SyncNode::sync()
             tbr = us_t{std::chrono::nanoseconds{reply.beacon_recv_time()}};
             tbt = us_t{std::chrono::nanoseconds{reply.reply_send_time()}};
 
-            //LOG_F(INFO, "Timestamps:\nto=\t%Lf\ntbr=\t%Lf\ntbt=\t%Lf\ntr=\t%Lf",
-            //      to.count(), tbr.count(), tbt.count(), tr.count());
+            // adjust local timestamps with minimum delays for beacons and replies
+            to += this->minimum_delays.beacon;
+            tr -= this->minimum_delays.beacon_reply;
 
+            // add data points
             this->algo->addDataPoint(to, tbr, tr);
             this->algo->addDataPoint(to, tbt, tr);
 
@@ -445,7 +487,9 @@ void MiniSync::ReferenceNode::serve()
                 auto* reply = new MiniSync::Protocol::BeaconReply{};
                 const MiniSync::Protocol::Beacon& beacon = incoming.beacon();
                 reply->set_seq(beacon.seq());
-                reply->set_beacon_recv_time(std::chrono::duration_cast<std::chrono::nanoseconds>(recv_time).count());
+                reply->set_beacon_recv_time(
+                    std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        recv_time - this->minimum_delays.beacon).count()); // adjust with minimum delays
 
                 LOG_F(INFO, "Received a beacon (SEQ %"
                     PRIu8
@@ -454,8 +498,7 @@ void MiniSync::ReferenceNode::serve()
                 outgoing.set_allocated_beacon_r(reply);
                 reply->set_reply_send_time(
                     std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        std::chrono::steady_clock::now() - start).count()
-                );
+                        (std::chrono::steady_clock::now() - start) + this->minimum_delays.beacon_reply).count());
 
                 LOG_F(INFO, "Replying to beacon.");
                 this->send_message(outgoing, nullptr);
