@@ -268,13 +268,10 @@ void MiniSync::SyncNode::handshake()
 {
     // send handshake request to peer
     MiniSync::Protocol::MiniSyncMsg msg{};
-    auto* handshake = new MiniSync::Protocol::Handshake{};
-
-    handshake->set_mode(this->mode);
-    handshake->set_version_major(MiniSync::Protocol::VERSION_MAJOR);
-    handshake->set_version_minor(MiniSync::Protocol::VERSION_MINOR);
-
-    msg.set_allocated_handshake(handshake);
+    msg.set_allocated_handshake(new MiniSync::Protocol::Handshake{});
+    msg.mutable_handshake()->set_mode(this->mode);
+    msg.mutable_handshake()->set_version_major(MiniSync::Protocol::VERSION_MAJOR);
+    msg.mutable_handshake()->set_version_minor(MiniSync::Protocol::VERSION_MINOR);
 
     MiniSync::Protocol::MiniSyncMsg incoming{};
     while (this->running.load())
@@ -346,9 +343,8 @@ void MiniSync::SyncNode::sync()
     while (this->running.load())
     {
         auto t_i = std::chrono::steady_clock::now();
-        auto* beacon = new MiniSync::Protocol::Beacon{};
-        beacon->set_seq(seq);
-        msg.set_allocated_beacon(beacon);
+        msg.set_allocated_beacon(new MiniSync::Protocol::Beacon{});
+        msg.mutable_beacon()->set_seq(seq);
 
         LOG_F(INFO, "Sending beacon (SEQ %"
             PRIu8
@@ -484,10 +480,10 @@ void MiniSync::ReferenceNode::serve()
             if (incoming.has_beacon())
             {
                 // got beacon, so just reply
-                auto* reply = new MiniSync::Protocol::BeaconReply{};
                 const MiniSync::Protocol::Beacon& beacon = incoming.beacon();
-                reply->set_seq(beacon.seq());
-                reply->set_beacon_recv_time(
+                outgoing.set_allocated_beacon_r(new MiniSync::Protocol::BeaconReply{});
+                outgoing.mutable_beacon_r()->set_seq(beacon.seq());
+                outgoing.mutable_beacon_r()->set_beacon_recv_time(
                     std::chrono::duration_cast<std::chrono::nanoseconds>(
                         recv_time - this->minimum_delays.beacon).count()); // adjust with minimum delays
 
@@ -495,8 +491,7 @@ void MiniSync::ReferenceNode::serve()
                     PRIu8
                     ").", beacon.seq());
 
-                outgoing.set_allocated_beacon_r(reply);
-                reply->set_reply_send_time(
+                outgoing.mutable_beacon_r()->set_reply_send_time(
                     std::chrono::duration_cast<std::chrono::nanoseconds>(
                         (std::chrono::steady_clock::now() - start) + this->minimum_delays.beacon_reply).count());
 
@@ -507,8 +502,7 @@ void MiniSync::ReferenceNode::serve()
             {
                 // got goodbye, reply and shutdown
                 LOG_F(WARNING, "Got shutdown request.");
-                auto* greply = new MiniSync::Protocol::GoodByeReply{};
-                outgoing.set_allocated_goodbye_r(greply);
+                outgoing.set_allocated_goodbye_r(new MiniSync::Protocol::GoodByeReply{});
                 this->send_message(outgoing, nullptr);
                 this->running.store(false);
             }
@@ -546,7 +540,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
             this->recv_message(incoming, &reply_to);
             if (incoming.has_handshake())
             {
-                auto* reply = new MiniSync::Protocol::HandshakeReply{};
+                outgoing.set_allocated_handshake_r(new MiniSync::Protocol::HandshakeReply{});
                 LOG_F(INFO, "Received handshake request.");
                 using ReplyStatus = MiniSync::Protocol::HandshakeReply_Status;
                 const auto& handshake = incoming.handshake();
@@ -565,18 +559,18 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                         PRIu8,
                           Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
                           handshake.version_major(), handshake.version_minor());
-                    reply->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
+                    outgoing.mutable_handshake_r()->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
                 }
                 else if (handshake.mode() == this->mode)
                 {
                     LOG_F(WARNING, "Handshake: Mode mismatch.");
-                    reply->set_status(ReplyStatus::HandshakeReply_Status_MODE_MISMATCH);
+                    outgoing.mutable_handshake_r()->set_status(ReplyStatus::HandshakeReply_Status_MODE_MISMATCH);
                 }
                 else
                 {
                     // everything is ok, let's "connect"
                     LOG_F(INFO, "Handshake successful.");
-                    reply->set_status(ReplyStatus::HandshakeReply_Status_SUCCESS);
+                    outgoing.mutable_handshake_r()->set_status(ReplyStatus::HandshakeReply_Status_SUCCESS);
                     // UDP is connectionless, this is merely to store the address of the client and "fake" a connection
                     CHECK_GE_F(connect(this->sock_fd, &reply_to, reply_to_len), 0,
                                "Call to connect failed. ERRNO: %s", strerror(errno));
@@ -585,7 +579,6 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                 }
 
                 // reply is sent no matter what
-                outgoing.set_allocated_handshake_r(reply);
                 this->send_message(outgoing, &reply_to);
                 // TODO: verify the handshake is received??
 
