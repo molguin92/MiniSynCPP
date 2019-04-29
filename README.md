@@ -8,12 +8,15 @@ The only requirements are:
 
 - CMAKE
 - C++11 Compiler (gcc, g++, clang).
-- Google Protobuf Libraries
 
 Compilation is then just a matter of running:
 ```bash
 cmake --target MiniSynCPP -- -j 4
 ```
+
+Note: Even though the project uses the Google Protobuf libraries, it is not necessary to have these installed when 
+compiling, as the build chain will download its own copy anyway to statically link them. This is mainly done for 
+portability and cross-compilation purposes.
 
 ## References
 [1] S. Yoon, C. Veerarittiphan, and M. L. Sichitiu. 2007. Tiny-sync: Tight time synchronization for wireless sensor 
