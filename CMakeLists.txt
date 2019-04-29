@@ -65,14 +65,16 @@ add_custom_command(OUTPUT ${PROTO_SRC}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/net)
 
 add_executable(MiniSynCPP
-        src/main.cpp
+        src/main.cpp src/config.h
         src/algorithms/minisync.cpp src/algorithms/minisync.h
         src/algorithms/constraints.cpp src/algorithms/constraints.h
         src/node.cpp src/node.h
+        src/exception.cpp src/exception.h
+        ${PROTO_SRC}
+        src/stats.cpp src/stats.h
         include/CLI11/CLI11.hpp
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
-        src/exception.cpp src/exception.h src/exception.cpp
-        ${PROTO_SRC} src/stats.cpp src/stats.h)
+        )
 
 add_dependencies(MiniSynCPP protobuf-external protoc)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)

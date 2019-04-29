@@ -7,7 +7,7 @@
 
 #include <utility>
 #include "node.h"
-#include "net/protocol.h"
+#include "config.h"
 #include "exception.h"
 #include <cstring>
 #include <unistd.h>
@@ -67,8 +67,8 @@ MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
     // set up a separate thread for echoing messages
     std::thread t([loop_in_fd, total_samples, T0]()
                   {
-                      uint8_t in_buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
-                      uint8_t out_buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
+                      uint8_t in_buf[MAX_MSG_LEN] = {0x00};
+                      uint8_t out_buf[MAX_MSG_LEN] = {0x00};
                       sockaddr_in reply_to{0x00};
                       socklen_t reply_to_len = sizeof(sockaddr_in);
                       ssize_t in_msg_len;
@@ -83,7 +83,7 @@ MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
                       for (int_fast32_t i = 0; i < total_samples; ++i)
                       {
                           // read incoming
-                          CHECK_GE_F((in_msg_len = recvfrom(loop_in_fd, in_buf, MiniSync::Protocol::MAX_MSG_LEN, 0,
+                          CHECK_GE_F((in_msg_len = recvfrom(loop_in_fd, in_buf, MAX_MSG_LEN, 0,
                                                             (sockaddr*) &reply_to, &reply_to_len)), 0,
                                      "Error reading from socket on loopback interface...");
                           t_in = std::chrono::steady_clock::now();
@@ -106,8 +106,8 @@ MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
                                      "Error writing to socket on loopback interface.");
 
                           // cleanup
-                          memset(in_buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
-                          memset(out_buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
+                          memset(in_buf, 0x00, MAX_MSG_LEN);
+                          memset(out_buf, 0x00, MAX_MSG_LEN);
                           memset(&reply_to, 0x00, reply_to_len);
                       }
                   });
@@ -116,8 +116,8 @@ MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
     MiniSync::Protocol::MiniSyncMsg bcn_msg{};
     MiniSync::Protocol::MiniSyncMsg rpl_msg{};
     bcn_msg.set_allocated_beacon(new MiniSync::Protocol::Beacon{});
-    uint8_t beacon_buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
-    uint8_t reply_buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
+    uint8_t beacon_buf[MAX_MSG_LEN] = {0x00};
+    uint8_t reply_buf[MAX_MSG_LEN] = {0x00};
     ssize_t out_sz, in_sz;
 
     us_t min_bcn_delay{std::numeric_limits<long double>::max()};
@@ -135,7 +135,7 @@ MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
                    "Error writing to socket on loopback interface.");
 
         // get reply
-        CHECK_GE_F((in_sz = recvfrom(loop_out_fd, reply_buf, MiniSync::Protocol::MAX_MSG_LEN, 0, nullptr, nullptr)), 0,
+        CHECK_GE_F((in_sz = recvfrom(loop_out_fd, reply_buf, MAX_MSG_LEN, 0, nullptr, nullptr)), 0,
                    "Error reading from socket on loopback interface...");
         t_in = std::chrono::steady_clock::now() - T0;
         rpl_msg.ParseFromArray(reply_buf, in_sz);
@@ -153,8 +153,8 @@ MiniSync::Node::Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode) :
         }
 
         // cleanup
-        memset(beacon_buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
-        memset(reply_buf, 0x00, MiniSync::Protocol::MAX_MSG_LEN);
+        memset(beacon_buf, 0x00, MAX_MSG_LEN);
+        memset(reply_buf, 0x00, MAX_MSG_LEN);
     }
     t.join();
 
@@ -207,7 +207,7 @@ MiniSync::Node::send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockadd
 MiniSync::us_t
 MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to)
 {
-    uint8_t buf[MiniSync::Protocol::MAX_MSG_LEN] = {0x00};
+    uint8_t buf[MAX_MSG_LEN] = {0x00};
     ssize_t recv_sz;
     socklen_t reply_to_len = sizeof(struct sockaddr_in);
     msg.Clear();
@@ -216,7 +216,7 @@ MiniSync::Node::recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockad
     if (reply_to != nullptr)
         memset(reply_to, 0x00, reply_to_len);
 
-    if ((recv_sz = recvfrom(this->sock_fd, buf, MiniSync::Protocol::MAX_MSG_LEN, 0, reply_to, &reply_to_len)) < 0)
+    if ((recv_sz = recvfrom(this->sock_fd, buf, MAX_MSG_LEN, 0, reply_to, &reply_to_len)) < 0)
     {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
         {

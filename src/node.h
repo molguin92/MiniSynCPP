@@ -13,12 +13,16 @@
 #include <string>
 #include "algorithms/minisync.h"
 #include <protocol.pb.h>
+#include <cinttypes>
 #include "stats.h"
 #include "algorithms/constraints.h"
 
 namespace MiniSync
 {
     typedef struct sockaddr_in SOCKADDR;
+
+    // Maximum message length corresponds to the maximum UDP datagram size.
+    static const size_t MAX_MSG_LEN = 65507;
 
     class Node
     {
