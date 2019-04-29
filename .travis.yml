@@ -1,0 +1,17 @@
+language: c++
+compiler:
+  - clang
+  - gcc
+
+os: linux
+dist: xenial
+
+before_install:
+  - eval "${MATRIX_EVAL}"
+  - mkdir ./cmake_build
+  - cd ./cmake_build
+  - cmake ..
+
+install:
+  - cd ./cmake_build
+  - cmake --build . --target MiniSynCPP -- -j 4
