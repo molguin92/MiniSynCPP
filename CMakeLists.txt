@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 project(MiniSynCPP)
 set(CMAKE_CXX_STANDARD 11)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/config.h)
+
+# read config from config.h
+file(READ src/config.h CONFIG)
+string(REGEX MATCH "APP_VERSION_MAJOR ([0-9]*)" _ ${CONFIG})
+set(MiniSynCPP_VERSION_MAJOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "APP_VERSION_MINOR ([0-9]*)" _ ${CONFIG})
+set(MiniSynCPP_VERSION_MINOR ${CMAKE_MATCH_1})
+
 include(ExternalProject REQUIRED)
 find_package(Threads REQUIRED)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)

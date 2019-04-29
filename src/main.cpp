@@ -11,6 +11,7 @@
 #include "node.h"
 #include "exception.h"
 #include <memory>
+#include "config.h"
 
 MiniSync::Node* node = nullptr;
 
@@ -33,7 +34,12 @@ int main(int argc, char* argv[])
     uint16_t bind_port;
     std::string output_file;
 
-    CLI::App app{"Standalone demo implementation of the Tiny/MiniSync time synchronization algorithms."};
+    std::ostringstream app_description{};
+    app_description
+        << "MiniSynCPP v" << APP_VERSION_MAJOR << "." << APP_VERSION_MINOR << ". "
+        << "Standalone demo implementation of the Tiny/MiniSync time synchronization algorithms.";
+
+    CLI::App app{app_description.str()};
 
     auto* ref_mode = app.add_subcommand("REF_MODE", "Start node in reference mode; "
                                                     "i.e. other peers synchronize to this node's clock.");

@@ -269,8 +269,8 @@ void MiniSync::SyncNode::handshake()
     MiniSync::Protocol::MiniSyncMsg msg{};
     msg.set_allocated_handshake(new MiniSync::Protocol::Handshake{});
     msg.mutable_handshake()->set_mode(this->mode);
-    msg.mutable_handshake()->set_version_major(MiniSync::Protocol::VERSION_MAJOR);
-    msg.mutable_handshake()->set_version_minor(MiniSync::Protocol::VERSION_MINOR);
+    msg.mutable_handshake()->set_version_major(PROTOCOL_VERSION_MAJOR);
+    msg.mutable_handshake()->set_version_minor(PROTOCOL_VERSION_MINOR);
 
     MiniSync::Protocol::MiniSyncMsg incoming{};
     while (this->running.load())
@@ -544,8 +544,8 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                 using ReplyStatus = MiniSync::Protocol::HandshakeReply_Status;
                 const auto& handshake = incoming.handshake();
 
-                if (Protocol::VERSION_MAJOR != handshake.version_major() ||
-                    Protocol::VERSION_MINOR != handshake.version_minor())
+                if (PROTOCOL_VERSION_MAJOR != handshake.version_major() ||
+                    PROTOCOL_VERSION_MINOR != handshake.version_minor())
                 {
                     LOG_F(WARNING, "Handshake: Version mismatch.");
                     LOG_F(WARNING, "Local version: %"
@@ -556,7 +556,7 @@ void MiniSync::ReferenceNode::wait_for_handshake()
                         PRIu8
                         ".%"
                         PRIu8,
-                          Protocol::VERSION_MAJOR, Protocol::VERSION_MINOR,
+                          PROTOCOL_VERSION_MAJOR, PROTOCOL_VERSION_MINOR,
                           handshake.version_major(), handshake.version_minor());
                     outgoing.mutable_handshake_r()->set_status(ReplyStatus::HandshakeReply_Status_VERSION_MISMATCH);
                 }
