@@ -75,6 +75,7 @@ namespace MiniSync
         MiniSync::Stats::SyncStats stats;
         void handshake();
         void sync();
+        double bw_bytes_per_usecond;
 
     public:
         static const uint32_t RD_TIMEOUT_USEC = 100000; // 100 ms
@@ -83,7 +84,8 @@ namespace MiniSync
                  std::string& peer,
                  uint16_t peer_port,
                  std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo,
-                 std::string stat_file_path = "");
+                 std::string stat_file_path = "",
+                 double bandwidth_mbps = -1.0);
         ~SyncNode() override; // = default;
 
         void run() final;

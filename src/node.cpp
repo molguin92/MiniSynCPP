@@ -338,12 +338,14 @@ void MiniSync::SyncNode::sync()
 
     us_t to, tbr, tbt, tr;
     uint8_t seq = 0;
+    ssize_t send_sz, recv_sz;
 
     while (this->running.load())
     {
         auto t_i = std::chrono::steady_clock::now();
         msg.set_allocated_beacon(new MiniSync::Protocol::Beacon{});
         msg.mutable_beacon()->set_seq(seq);
+        send_sz = msg.ByteSizeLong();
 
         LOG_F(INFO, "Sending beacon (SEQ %"
             PRIu8
@@ -356,6 +358,7 @@ void MiniSync::SyncNode::sync()
 
             // wait for reply
             tr = this->recv_message(msg, nullptr);
+            recv_sz = msg.ByteSizeLong();
 
             if (!msg.has_beacon_r())
             {
@@ -380,6 +383,17 @@ void MiniSync::SyncNode::sync()
             // adjust local timestamps with minimum delays for beacons and replies
             to += this->minimum_delays.beacon;
             tr -= this->minimum_delays.beacon_reply;
+
+            // additional adjustment based on bandwidth
+            if (this->bw_bytes_per_usecond > 0)
+            {
+                to += us_t{send_sz / bw_bytes_per_usecond};
+                tr -= us_t{recv_sz / bw_bytes_per_usecond};
+
+                DLOG_F(WARNING, "Adjustment due to network delay:");
+                DLOG_F(WARNING, "Beacon (%ld bytes): %f", send_sz, send_sz / bw_bytes_per_usecond);
+                DLOG_F(WARNING, "Reply (%ld bytes): %f", recv_sz, recv_sz / bw_bytes_per_usecond);
+            }
 
             // add data points
             this->algo->addDataPoint(to, tbr, tr);
@@ -426,7 +440,8 @@ MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              std::string& peer,
                              uint16_t peer_port,
                              std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo,
-                             std::string stat_file_path) :
+                             std::string stat_file_path,
+                             double bandwidth_mbps) :
     Node(bind_port, MiniSync::Protocol::NodeMode::SYNC),
     algo(std::move(sync_algo)), // take ownership of algorithm
     peer(peer),
@@ -449,6 +464,18 @@ MiniSync::SyncNode::SyncNode(uint16_t bind_port,
     read_timeout.tv_usec = MiniSync::SyncNode::RD_TIMEOUT_USEC;
     CHECK_EQ_F(setsockopt(this->sock_fd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout)), 0,
                "Failed setting SO_RCVTIMEO option for socket.");
+
+    // finally, store bandwidth in bytes/µsecond
+    // 1 s = 1 000 000 µs
+    // 1 Megabit = 1 000 000 bytes / 8
+    // -> X * 1 Megabit / s = X * (1 000 000 bytes / 8) / 1 000 000 µs
+    // = X / 8.0 bytes/µs
+    if (bandwidth_mbps > 0)
+    {
+        this->bw_bytes_per_usecond = bandwidth_mbps / 8.0;
+        LOG_F(INFO, "User specified bandwidth: %f Mbps | %f bytes per µs", bandwidth_mbps, bw_bytes_per_usecond);
+    }
+    else this->bw_bytes_per_usecond = -1.0;
 }
 
 MiniSync::SyncNode::~SyncNode()
