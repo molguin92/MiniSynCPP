@@ -11,5 +11,5 @@ before_install:
   - cd ./cmake_build
   - cmake ..
 
-install:
+script:
   - cmake --build . --target MiniSynCPP -- -j 4
