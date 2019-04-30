@@ -29,7 +29,7 @@ The program includes a help message accessible through the ```-h, --help``` flag
 ```bash
 $> MiniSynCPP --help
 MiniSynCPP v0.4. Standalone demo implementation of the Tiny/MiniSync time synchronization algorithms.
-Usage: cmake-build-debug/MiniSynCPP [OPTIONS] SUBCOMMAND
+Usage: MiniSynCPP [OPTIONS] SUBCOMMAND
 
 Options:
   -h,--help                   Print this help message and exit
@@ -43,7 +43,7 @@ Help is also available per application mode:
 ```bash
 $> MiniSynCPP SYNC_MODE --help
 Start node in synchronization mode.
-Usage: cmake-build-debug/MiniSynCPP SYNC_MODE [OPTIONS] BIND_PORT ADDRESS PORT
+Usage: MiniSynCPP SYNC_MODE [OPTIONS] BIND_PORT ADDRESS PORT
 
 Positionals:
   BIND_PORT UINT REQUIRED     Local UDP port to bind to.
@@ -59,7 +59,7 @@ Options:
 
 $> MiniSynCPP REF_MODE --help
 Start node in reference mode; i.e. other peers synchronize to this node's clock.
-Usage: cmake-build-debug/MiniSynCPP REF_MODE [OPTIONS] BIND_PORT
+Usage: MiniSynCPP REF_MODE [OPTIONS] BIND_PORT
 
 Positionals:
  BIND_PORT UINT REQUIRED     Local UDP port to bind to.
