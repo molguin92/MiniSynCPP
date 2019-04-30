@@ -351,74 +351,31 @@ void MiniSync::SyncNode::sync()
             PRIu8
             ").", seq);
 
+        MiniSync::Protocol::BeaconReply reply;
+
         try
         {
             // nullptr since we should already be connected
             to = this->send_message(msg, nullptr);
 
-            // wait for reply
-            tr = this->recv_message(msg, nullptr);
-            recv_sz = msg.ByteSizeLong();
-
-            if (!msg.has_beacon_r())
+            for (;;)
             {
-                LOG_F(WARNING, "Got a message from peer which was not a beacon reply.");
-                continue;
+                // wait for reply without resending to avoid ugly feedback loops
+                tr = this->recv_message(msg, nullptr);
+                recv_sz = msg.ByteSizeLong();
+
+                if (!msg.has_beacon_r())
+                {
+                    LOG_F(WARNING, "Got a message from peer which was not a beacon reply.");
+                    continue;
+                }
+                else if ((reply = msg.beacon_r()).seq() != seq)
+                {
+                    LOG_F(WARNING, "Beacon reply was out of order, ignoring...");
+                    continue;
+                }
+                else break; // reply is valid
             }
-
-            const MiniSync::Protocol::BeaconReply& reply = msg.beacon_r();
-
-            // ignore out-of-order replies
-            if (reply.seq() != seq)
-            {
-                // TODO: DO SOMETHING ABOUT OUT OF ORDER REPLIES
-                LOG_F(WARNING, "Beacon reply was out of order, ignoring...");
-                continue;
-            }
-
-            // timestamps are in nanoseconds, but protocol works with microseconds
-            tbr = us_t{std::chrono::nanoseconds{reply.beacon_recv_time()}};
-            tbt = us_t{std::chrono::nanoseconds{reply.reply_send_time()}};
-
-            // adjust local timestamps with minimum delays for beacons and replies
-            to += this->minimum_delays.beacon;
-            tr -= this->minimum_delays.beacon_reply;
-
-            // additional adjustment based on bandwidth
-            if (this->bw_bytes_per_usecond > 0)
-            {
-                to += us_t{send_sz / bw_bytes_per_usecond};
-                tr -= us_t{recv_sz / bw_bytes_per_usecond};
-
-                DLOG_F(WARNING, "Adjustment due to network delay:");
-                DLOG_F(WARNING, "Beacon (%ld bytes): %f", send_sz, send_sz / bw_bytes_per_usecond);
-                DLOG_F(WARNING, "Reply (%ld bytes): %f", recv_sz, recv_sz / bw_bytes_per_usecond);
-            }
-
-            // add data points
-            this->algo->addDataPoint(to, tbr, tr);
-            this->algo->addDataPoint(to, tbt, tr);
-
-            auto drift = algo->getDrift();
-            auto drift_error = algo->getDriftError();
-            auto offset = algo->getOffset();
-            auto offset_error = algo->getOffsetError();
-
-            auto
-                adj_timestamp =
-                std::chrono::duration_cast<us_t>(algo->getCurrentAdjustedTime().time_since_epoch());
-
-            LOG_F(INFO, "Current adjusted timestamp: %Lf µs", adj_timestamp.count());
-            LOG_F(INFO, "Drift: %Lf | Error: +/- %Lf", drift, drift_error);
-            LOG_F(INFO, "Offset: %Lf µs | Error: +/- %Lf µs", offset.count(), offset_error.count());
-
-            stats.add_sample(offset.count(), offset_error.count(), drift, drift_error);
-
-            seq++;
-            msg.Clear();
-            // msg handles clearing beacon
-            auto t_f = std::chrono::steady_clock::now();
-            std::this_thread::sleep_for(std::chrono::milliseconds(100) - (t_f - t_i)); // TODO: parameterize
         }
             // only catch exceptions that we can work with
         catch (MiniSync::Exceptions::TimeoutException& e)
@@ -433,6 +390,51 @@ void MiniSync::SyncNode::sync()
             LOG_F(WARNING, "Could not deserialize incoming message, retrying...");
             continue;
         }
+
+
+        // timestamps are in nanoseconds, but protocol works with microseconds
+        tbr = us_t{std::chrono::nanoseconds{reply.beacon_recv_time()}};
+        tbt = us_t{std::chrono::nanoseconds{reply.reply_send_time()}};
+
+        // adjust local timestamps with minimum delays for beacons and replies
+        to += this->minimum_delays.beacon;
+        tr -= this->minimum_delays.beacon_reply;
+
+        // additional adjustment based on bandwidth
+        if (this->bw_bytes_per_usecond > 0)
+        {
+            to += us_t{send_sz / bw_bytes_per_usecond};
+            tr -= us_t{recv_sz / bw_bytes_per_usecond};
+
+            DLOG_F(WARNING, "Adjustment due to network delay:");
+            DLOG_F(WARNING, "Beacon (%ld bytes): %f", send_sz, send_sz / bw_bytes_per_usecond);
+            DLOG_F(WARNING, "Reply (%ld bytes): %f", recv_sz, recv_sz / bw_bytes_per_usecond);
+        }
+
+        // add data points
+        this->algo->addDataPoint(to, tbr, tr);
+        this->algo->addDataPoint(to, tbt, tr);
+
+        auto drift = algo->getDrift();
+        auto drift_error = algo->getDriftError();
+        auto offset = algo->getOffset();
+        auto offset_error = algo->getOffsetError();
+
+        auto
+            adj_timestamp =
+            std::chrono::duration_cast<us_t>(algo->getCurrentAdjustedTime().time_since_epoch());
+
+        LOG_F(INFO, "Current adjusted timestamp: %Lf µs", adj_timestamp.count());
+        LOG_F(INFO, "Drift: %Lf | Error: +/- %Lf", drift, drift_error);
+        LOG_F(INFO, "Offset: %Lf µs | Error: +/- %Lf µs", offset.count(), offset_error.count());
+
+        stats.add_sample(offset.count(), offset_error.count(), drift, drift_error);
+
+        seq++;
+        msg.Clear();
+        // msg handles clearing beacon
+        auto t_f = std::chrono::steady_clock::now();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100) - (t_f - t_i)); // TODO: parameterize
     }
 }
 
