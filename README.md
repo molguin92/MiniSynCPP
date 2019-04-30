@@ -1,8 +1,7 @@
 # MiniSynCPP
 [![Build Status](https://travis-ci.org/molguin92/MiniSynCPP.svg?branch=master)](https://travis-ci.org/molguin92/MiniSynCPP)
 
-Reference implementation in C++11 of the MiniSync/TinySync time synchronization algorithms detailed in [\[1, 2\]]
-(#references).
+Reference implementation in C++11 of the MiniSync/TinySync time synchronization algorithms detailed in [\[1, 2\]](#references).
 Note that this implementation is still pretty naive and probably should not be used for anything critical (yet).
 
 ## Compilation
