@@ -34,6 +34,7 @@ int main(int argc, char* argv[])
     uint16_t bind_port;
     std::string output_file;
     double bandwidth = -1.0;
+    double min_ping = -1.0;
 
     std::ostringstream app_description{};
     app_description
@@ -57,6 +58,9 @@ int main(int argc, char* argv[])
     sync_mode->add_option("-b,--bandwidth", bandwidth, // sync node is the only one that adjusts based on bandwidth
                           "Nominal bandwidth in Mbps, for minimum delay estimation.",
                           false);
+    sync_mode->add_option("-p,--ping", min_ping,
+                          "Nominal minimum ICMP ping RTT in milliseconds for better minimum delay estimation.",
+                          false);
 
     app.fallthrough(true);
     app.require_subcommand(1, 1);
@@ -78,7 +82,7 @@ int main(int argc, char* argv[])
 
         node = new MiniSync::SyncNode(bind_port, peer, port,
                                       std::unique_ptr<MiniSync::SyncAlgorithm>(new MiniSync::MiniSyncAlgorithm()),
-                                      output_file, bandwidth);
+                                      output_file, bandwidth, min_ping);
     }
     else
         ABORT_F("Invalid mode specified for application - THIS SHOULD NEVER HAPPEN?");

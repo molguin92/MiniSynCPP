@@ -340,6 +340,8 @@ void MiniSync::SyncNode::sync()
     uint8_t seq = 0;
     ssize_t send_sz, recv_sz;
 
+    us_t min_uplink_delay{0}, min_downlink_delay{0};
+
     while (this->running.load())
     {
         auto t_i = std::chrono::steady_clock::now();
@@ -403,13 +405,19 @@ void MiniSync::SyncNode::sync()
         // additional adjustment based on bandwidth
         if (this->bw_bytes_per_usecond > 0)
         {
-            to += us_t{send_sz / bw_bytes_per_usecond};
-            tr -= us_t{recv_sz / bw_bytes_per_usecond};
-
-            DLOG_F(WARNING, "Adjustment due to network delay:");
-            DLOG_F(WARNING, "Beacon (%ld bytes): %f", send_sz, send_sz / bw_bytes_per_usecond);
-            DLOG_F(WARNING, "Reply (%ld bytes): %f", recv_sz, recv_sz / bw_bytes_per_usecond);
+            // ACK size on WiFi is 14 bytes, so let's use that as the minimum frame size
+            send_sz = std::max(send_sz, static_cast<ssize_t>(14));
+            recv_sz = std::max(recv_sz, static_cast<ssize_t>(14));
+            min_uplink_delay = us_t{send_sz / bw_bytes_per_usecond};
+            min_downlink_delay = us_t{recv_sz / bw_bytes_per_usecond};
         }
+
+        // adjustment based on ping
+        min_uplink_delay = std::max(min_uplink_delay, this->min_ping_oneway_us);
+        min_downlink_delay = std::max(min_downlink_delay, this->min_ping_oneway_us);
+
+        to += min_uplink_delay;
+        tr -= min_downlink_delay;
 
         // add data points
         this->algo->addDataPoint(to, tbr, tr);
@@ -443,7 +451,8 @@ MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              uint16_t peer_port,
                              std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo,
                              std::string stat_file_path,
-                             double bandwidth_mbps) :
+                             double bandwidth_mbps,
+                             double min_ping_rtt_ms) :
     Node(bind_port, MiniSync::Protocol::NodeMode::SYNC),
     algo(std::move(sync_algo)), // take ownership of algorithm
     peer(peer),
@@ -467,7 +476,7 @@ MiniSync::SyncNode::SyncNode(uint16_t bind_port,
     CHECK_EQ_F(setsockopt(this->sock_fd, SOL_SOCKET, SO_RCVTIMEO, &read_timeout, sizeof(read_timeout)), 0,
                "Failed setting SO_RCVTIMEO option for socket.");
 
-    // finally, store bandwidth in bytes/µsecond
+    // store bandwidth in bytes/µsecond
     // 1 s = 1 000 000 µs
     // 1 Megabit = 1 000 000 bytes / 8
     // -> X * 1 Megabit / s = X * (1 000 000 bytes / 8) / 1 000 000 µs
@@ -478,6 +487,10 @@ MiniSync::SyncNode::SyncNode(uint16_t bind_port,
         LOG_F(INFO, "User specified bandwidth: %f Mbps | %f bytes per µs", bandwidth_mbps, bw_bytes_per_usecond);
     }
     else this->bw_bytes_per_usecond = -1.0;
+
+    // ping rtt
+    // we multiply it by a factor of 0.9 since we want the absolute minimum with a bit of leeway as well
+    this->min_ping_oneway_us = min_ping_rtt_ms > 0 ? us_t{min_ping_rtt_ms * 1000.0 / 2.0 * 0.9} : us_t{-1.0};
 }
 
 MiniSync::SyncNode::~SyncNode()
