@@ -21,7 +21,11 @@ set(GITHUB_URL https://github.com/protocolbuffers/protobuf/releases/download)
 
 set(PROTOBUF_VERSION "3.7.1")
 set(PROTOBUF_TAR_GZ "${GITHUB_URL}/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz")
-set(PROTOC_ARCHIVE "${GITHUB_URL}/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
+if (APPLE)
+    set(PROTOC_ARCHIVE "${GITHUB_URL}/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-osx-x86_64.zip")
+elseif (UNIX)
+    set(PROTOC_ARCHIVE "${GITHUB_URL}/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
+endif ()
 
 ExternalProject_Add(
         protobuf-external
