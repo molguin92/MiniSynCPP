@@ -1,6 +1,6 @@
 /*
 * Author: Manuel Olguín Muñoz <manuel@olguin.se>
-* 
+*
 * Copyright© 2019 Manuel Olguín Muñoz
 * See LICENSE file included in the root directory of this project for licensing and copyright details.
 */
@@ -53,7 +53,7 @@ uint32_t MiniSync::Stats::SyncStats::write_csv(const std::string& path)
         // in case of any error, (try to) remove the file
         LOG_F(ERROR, "Writing to file failed!");
         remove(path.c_str());
-        __throw_exception_again;
+        throw;
     }
 
     return i - 1; // number of written records
