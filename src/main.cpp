@@ -11,6 +11,7 @@
 #include "node.h"
 #include "exception.h"
 #include <memory>
+#include "config.h"
 
 MiniSync::Node* node = nullptr;
 
@@ -32,8 +33,15 @@ int main(int argc, char* argv[])
     uint16_t port;
     uint16_t bind_port;
     std::string output_file;
+    double bandwidth = -1.0;
+    double min_ping = -1.0;
 
-    CLI::App app{"Standalone demo implementation of the Tiny/MiniSync time synchronization algorithms."};
+    std::ostringstream app_description{};
+    app_description
+        << "MiniSynCPP v" << APP_VERSION_MAJOR << "." << APP_VERSION_MINOR << ". "
+        << "Standalone demo implementation of the Tiny/MiniSync time synchronization algorithms.";
+
+    CLI::App app{app_description.str()};
 
     auto* ref_mode = app.add_subcommand("REF_MODE", "Start node in reference mode; "
                                                     "i.e. other peers synchronize to this node's clock.");
@@ -47,6 +55,12 @@ int main(int argc, char* argv[])
     sync_mode->add_option<uint16_t>("PORT", port, "Target UDP Port on peer.")->required(true);
     sync_mode->add_option("-v", loguru::g_stderr_verbosity, "Set verbosity level.", true);
     sync_mode->add_option("-o,--output", output_file, "Output stats to file.", false);
+    sync_mode->add_option("-b,--bandwidth", bandwidth, // sync node is the only one that adjusts based on bandwidth
+                          "Nominal bandwidth in Mbps, for minimum delay estimation.",
+                          false);
+    sync_mode->add_option("-p,--ping", min_ping,
+                          "Nominal minimum ICMP ping RTT in milliseconds for better minimum delay estimation.",
+                          false);
 
     app.fallthrough(true);
     app.require_subcommand(1, 1);
@@ -68,7 +82,7 @@ int main(int argc, char* argv[])
 
         node = new MiniSync::SyncNode(bind_port, peer, port,
                                       std::unique_ptr<MiniSync::SyncAlgorithm>(new MiniSync::MiniSyncAlgorithm()),
-                                      output_file);
+                                      output_file, bandwidth, min_ping);
     }
     else
         ABORT_F("Invalid mode specified for application - THIS SHOULD NEVER HAPPEN?");

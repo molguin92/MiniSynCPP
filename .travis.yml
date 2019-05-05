@@ -1,0 +1,15 @@
+language: c++
+compiler:
+  - clang
+  - gcc
+
+os: linux
+dist: xenial
+
+before_install:
+  - mkdir ./cmake_build
+  - cd ./cmake_build
+  - cmake ..
+
+script:
+  - cmake --build . --target MiniSynCPP -- -j 4

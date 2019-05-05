@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.10)
 project(MiniSynCPP)
 set(CMAKE_CXX_STANDARD 11)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/config.h)
+
+# read config from config.h
+file(READ src/config.h CONFIG)
+string(REGEX MATCH "APP_VERSION_MAJOR ([0-9]*)" _ ${CONFIG})
+set(MiniSynCPP_VERSION_MAJOR ${CMAKE_MATCH_1})
+string(REGEX MATCH "APP_VERSION_MINOR ([0-9]*)" _ ${CONFIG})
+set(MiniSynCPP_VERSION_MINOR ${CMAKE_MATCH_1})
+
 include(ExternalProject REQUIRED)
 find_package(Threads REQUIRED)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -12,7 +21,11 @@ set(GITHUB_URL https://github.com/protocolbuffers/protobuf/releases/download)
 
 set(PROTOBUF_VERSION "3.7.1")
 set(PROTOBUF_TAR_GZ "${GITHUB_URL}/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz")
-set(PROTOC_ARCHIVE "${GITHUB_URL}/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
+if (APPLE)
+    set(PROTOC_ARCHIVE "${GITHUB_URL}/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-osx-x86_64.zip")
+elseif (UNIX)
+    set(PROTOC_ARCHIVE "${GITHUB_URL}/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
+endif ()
 
 ExternalProject_Add(
         protobuf-external
@@ -65,14 +78,16 @@ add_custom_command(OUTPUT ${PROTO_SRC}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/net)
 
 add_executable(MiniSynCPP
-        src/main.cpp
+        src/main.cpp src/config.h
         src/algorithms/minisync.cpp src/algorithms/minisync.h
         src/algorithms/constraints.cpp src/algorithms/constraints.h
         src/node.cpp src/node.h
+        src/exception.cpp src/exception.h
+        ${PROTO_SRC}
+        src/stats.cpp src/stats.h
         include/CLI11/CLI11.hpp
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
-        src/exception.cpp src/exception.h src/exception.cpp
-        ${PROTO_SRC} src/stats.cpp src/stats.h)
+        )
 
 add_dependencies(MiniSynCPP protobuf-external protoc)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)

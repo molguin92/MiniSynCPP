@@ -13,12 +13,16 @@
 #include <string>
 #include "algorithms/minisync.h"
 #include <protocol.pb.h>
+#include <cinttypes>
 #include "stats.h"
 #include "algorithms/constraints.h"
 
 namespace MiniSync
 {
     typedef struct sockaddr_in SOCKADDR;
+
+    // Maximum message length corresponds to the maximum UDP datagram size.
+    static const size_t MAX_MSG_LEN = 65507;
 
     class Node
     {
@@ -30,14 +34,17 @@ namespace MiniSync
         SOCKADDR local_addr;
         const MiniSync::Protocol::NodeMode mode;
         std::atomic_bool running;
-        us_t minimum_delay;
+
+        struct
+        {
+            us_t beacon{0};
+            us_t beacon_reply{0};
+        } minimum_delays;
 
         Node(uint16_t bind_port, MiniSync::Protocol::NodeMode mode);
 
         us_t send_message(MiniSync::Protocol::MiniSyncMsg& msg, const sockaddr* dest);
         us_t recv_message(MiniSync::Protocol::MiniSyncMsg& msg, struct sockaddr* reply_to);
-
-        void estimate_minimum_delay();
     public:
         virtual void run() = 0;
         virtual void shut_down();
@@ -68,6 +75,8 @@ namespace MiniSync
         MiniSync::Stats::SyncStats stats;
         void handshake();
         void sync();
+        double bw_bytes_per_usecond;
+        us_t min_ping_oneway_us;
 
     public:
         static const uint32_t RD_TIMEOUT_USEC = 100000; // 100 ms
@@ -76,7 +85,9 @@ namespace MiniSync
                  std::string& peer,
                  uint16_t peer_port,
                  std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo,
-                 std::string stat_file_path = "");
+                 std::string stat_file_path = "",
+                 double bandwidth_mbps = -1.0,
+                 double min_ping_rtt_ms = -1.0);
         ~SyncNode() override; // = default;
 
         void run() final;

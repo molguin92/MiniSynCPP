@@ -10,26 +10,41 @@
 #include "minisync.h"
 #include <algorithm>
 
+/*
+ * Get the current relative drift of the clock.
+ */
 long double MiniSync::SyncAlgorithm::getDrift()
 {
     return this->currentDrift.value;
 }
 
+/*
+ * Get the current (one-sided) error of the relative clock drift.
+ */
 long double MiniSync::SyncAlgorithm::getDriftError()
 {
     return this->currentDrift.error;
 }
 
+/*
+ * Get the current relative offset of the clock.
+ */
 MiniSync::us_t MiniSync::SyncAlgorithm::getOffset()
 {
     return this->currentOffset.value;
 }
 
+/*
+ * Get the current (one-sided) error of the relative clock offset.
+ */
 MiniSync::us_t MiniSync::SyncAlgorithm::getOffsetError()
 {
     return this->currentOffset.error;
 }
 
+/*
+ * Get the current time as a std::chrono::time_point, adjusted using the current relative offset and drift.
+ */
 std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::SyncAlgorithm::getCurrentAdjustedTime()
 {
     auto t_now = std::chrono::system_clock::now().time_since_epoch();
@@ -39,6 +54,9 @@ std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::Syn
     };
 }
 
+/*
+ * Adds a data point to the algorithm and recalculates the drift and offset estimates.
+ */
 void MiniSync::SyncAlgorithm::addDataPoint(us_t To, us_t Tb, us_t Tr)
 {
     // add points to internal storage
@@ -53,6 +71,7 @@ void MiniSync::SyncAlgorithm::addDataPoint(us_t To, us_t Tb, us_t Tr)
     {
         // n_th sample, n >= 1
         // pass it on to the specific algorithm
+        // TODO: extract this call from this method?
         this->__recalculateEstimates();
     }
 }
@@ -127,7 +146,7 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates()
         }
     }
 
-    this->__cleanup();
+    this->cleanup();
 
     CHECK_NE_F(current_low.get(), nullptr, "current_low is null!");
     CHECK_NE_F(current_high.get(), nullptr, "current_high is null!");
@@ -138,6 +157,44 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates()
     this->currentOffset.error = (current_high->getB() - current_low->getB()) / 2;
 
     CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
+}
+
+MiniSync::LPointPtr MiniSync::MiniSyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
+{
+    auto lp = SyncAlgorithm::addLowPoint(Tb, To);
+    // calculate the slopes for the minisync algo
+    std::pair<LPointPtr, LPointPtr> pair;
+    long double M;
+    for (LPointPtr olp: this->low_points)
+    {
+        if (lp->getX() == olp->getX()) continue; //avoid division by 0...
+
+        // hp is always the newest pointer, put it as the second element of the pair always
+        pair = std::make_pair(olp, lp);
+        M = (lp->getY() - olp->getY()) / (lp->getX() - olp->getX());
+        low_slopes.emplace(pair, M);
+    }
+
+    return lp;
+}
+
+MiniSync::HPointPtr MiniSync::MiniSyncAlgorithm::addHighPoint(MiniSync::us_t Tb, MiniSync::us_t Tr)
+{
+    auto hp = SyncAlgorithm::addHighPoint(Tb, Tr);
+    // calculate the slopes for the minisync algo
+    std::pair<HPointPtr, HPointPtr> pair;
+    long double M;
+    for (HPointPtr ohp: this->high_points)
+    {
+        if (hp->getX() == ohp->getX()) continue; //avoid division by 0...
+
+        // hp is always the newest pointer, put it as the second element of the pair always
+        pair = std::make_pair(ohp, hp);
+        M = (hp->getY() - ohp->getY()) / (hp->getX() - ohp->getX());
+        high_slopes.emplace(pair, M);
+    }
+
+    return hp;
 }
 
 MiniSync::LPointPtr MiniSync::SyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
@@ -169,6 +226,9 @@ MiniSync::HPointPtr MiniSync::SyncAlgorithm::addHighPoint(MiniSync::us_t Tb, Min
     return hp; // return a copy of the created pointer.
 }
 
+/*
+ * Helper instance method to add a constraint linear equation given a lower-bound and an upper-bound point.
+ */
 bool MiniSync::SyncAlgorithm::addConstraint(MiniSync::LPointPtr lp, MiniSync::HPointPtr hp)
 {
     auto pair = std::make_pair(lp, hp);
@@ -188,8 +248,10 @@ bool MiniSync::SyncAlgorithm::addConstraint(MiniSync::LPointPtr lp, MiniSync::HP
     return false;
 }
 
-
-void MiniSync::TinySyncAlgorithm::__cleanup()
+/*
+ * Removes un-used data points from the algorithm internal storage.
+ */
+void MiniSync::TinySyncAlgorithm::cleanup()
 {
     // cleanup
     for (auto iter = low_points.begin(); iter != low_points.end();)
@@ -223,7 +285,10 @@ void MiniSync::TinySyncAlgorithm::__cleanup()
     }
 }
 
-void MiniSync::MiniSyncAlgorithm::__cleanup()
+/*
+ * Removes un-used data points from the algorithm internal storage.
+ */
+void MiniSync::MiniSyncAlgorithm::cleanup()
 {
     // cleanup
     for (auto iter_j = low_points.begin(); iter_j != low_points.end();)
@@ -343,44 +408,6 @@ void MiniSync::MiniSyncAlgorithm::__cleanup()
                 this->high_constraints.emplace(pair, tmp_high_cons.at(pair));
         }
     }
-}
-
-MiniSync::LPointPtr MiniSync::MiniSyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
-{
-    auto lp = SyncAlgorithm::addLowPoint(Tb, To);
-    // calculate the slopes for the minisync algo
-    std::pair<LPointPtr, LPointPtr> pair;
-    long double M;
-    for (LPointPtr olp: this->low_points)
-    {
-        if (lp->getX() == olp->getX()) continue; //avoid division by 0...
-
-        // hp is always the newest pointer, put it as the second element of the pair always
-        pair = std::make_pair(olp, lp);
-        M = (lp->getY() - olp->getY()) / (lp->getX() - olp->getX());
-        low_slopes.emplace(pair, M);
-    }
-
-    return lp;
-}
-
-MiniSync::HPointPtr MiniSync::MiniSyncAlgorithm::addHighPoint(MiniSync::us_t Tb, MiniSync::us_t Tr)
-{
-    auto hp = SyncAlgorithm::addHighPoint(Tb, Tr);
-    // calculate the slopes for the minisync algo
-    std::pair<HPointPtr, HPointPtr> pair;
-    long double M;
-    for (HPointPtr ohp: this->high_points)
-    {
-        if (hp->getX() == ohp->getX()) continue; //avoid division by 0...
-
-        // hp is always the newest pointer, put it as the second element of the pair always
-        pair = std::make_pair(ohp, hp);
-        M = (hp->getY() - ohp->getY()) / (hp->getX() - ohp->getX());
-        high_slopes.emplace(pair, M);
-    }
-
-    return hp;
 }
 
 size_t std::hash<MiniSync::Point>::operator()(const MiniSync::Point& point) const

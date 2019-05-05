@@ -85,12 +85,16 @@ namespace MiniSync
          * Subclasses need to override this function with their own cleanup method.
          */
 
-        virtual void __cleanup() = 0;
+        virtual void cleanup() = 0;
 
         /*
-         * Add a new low point and calculate associated constraints
+         * Helper instance method to add a lower-bound point to the algorithm.
          */
         virtual LPointPtr addLowPoint(us_t Tb, us_t To);
+
+        /*
+        * Helper instance method to add a higher-bound point to the algorithm.
+        */
         virtual HPointPtr addHighPoint(us_t Tb, us_t Tr);
         virtual bool addConstraint(LPointPtr lp, HPointPtr hp);
     public:
@@ -122,7 +126,7 @@ namespace MiniSync
     public:
         TinySyncAlgorithm() = default;
     private:
-        void __cleanup() final;
+        void cleanup() final;
     };
 
     class MiniSyncAlgorithm : public SyncAlgorithm
@@ -132,7 +136,7 @@ namespace MiniSync
     private:
         std::unordered_map<std::pair<LPointPtr, LPointPtr>, long double, ppair_hash> low_slopes;
         std::unordered_map<std::pair<HPointPtr, HPointPtr>, long double, ppair_hash> high_slopes;
-        void __cleanup() final;
+        void cleanup() final;
         LPointPtr addLowPoint(us_t Tb, us_t To) final;
         HPointPtr addHighPoint(us_t Tb, us_t Tr) final;
     };
