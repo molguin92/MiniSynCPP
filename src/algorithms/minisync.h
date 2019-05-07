@@ -48,98 +48,101 @@ namespace MiniSync
         }
     };
 
-    class SyncAlgorithm
+    namespace Algorithms
     {
-    protected:
-        // constraints
-        std::unordered_map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr, ppair_hash> low_constraints;
-        std::unordered_map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr, ppair_hash> high_constraints;
-        std::set<LPointPtr, lppoint_compare> low_points;
-        std::set<HPointPtr, hppoint_compare> high_points;
-
-        ConstraintPtr current_high;
-        ConstraintPtr current_low;
-        std::pair<LPointPtr, HPointPtr> high_constraint_pts;
-        std::pair<LPointPtr, HPointPtr> low_constraint_pts;
-
-        struct
+        class Base
         {
-            long double value = 0;
-            long double error = 0;
-        } currentDrift; // relative drift of the clock
+        protected:
+            // constraints
+            std::unordered_map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr, ppair_hash> low_constraints;
+            std::unordered_map<std::pair<LPointPtr, HPointPtr>, ConstraintPtr, ppair_hash> high_constraints;
+            std::set<LPointPtr, lppoint_compare> low_points;
+            std::set<HPointPtr, hppoint_compare> high_points;
 
-        struct
+            ConstraintPtr current_high;
+            ConstraintPtr current_low;
+            std::pair<LPointPtr, HPointPtr> high_constraint_pts;
+            std::pair<LPointPtr, HPointPtr> low_constraint_pts;
+
+            struct
+            {
+                long double value = 0;
+                long double error = 0;
+            } currentDrift; // relative drift of the clock
+
+            struct
+            {
+                us_t value{0};
+                us_t error{0};
+            } currentOffset; // current offset in µseconds
+
+            us_t diff_factor; // difference between current lines
+            uint32_t processed_timestamps;
+
+            Base();
+
+            void __recalculateEstimates();
+
+            /*
+             * Subclasses need to override this function with their own cleanup method.
+             */
+
+            virtual void cleanup() = 0;
+
+            /*
+             * Helper instance method to add a lower-bound point to the algorithm.
+             */
+            virtual LPointPtr addLowPoint(us_t Tb, us_t To);
+
+            /*
+            * Helper instance method to add a higher-bound point to the algorithm.
+            */
+            virtual HPointPtr addHighPoint(us_t Tb, us_t Tr);
+            virtual bool addConstraint(LPointPtr lp, HPointPtr hp);
+        public:
+            /*
+             * Add a new DataPoint and recalculate offset and drift.
+             */
+            void addDataPoint(us_t To, us_t Tb, us_t Tr);
+
+            /*
+             * Get the current estimated relative clock drift.
+             */
+            long double getDrift();
+            long double getDriftError();
+
+            /*
+             * Get the current estimated relative clock offset in nanoseconds.
+             */
+            us_t getOffset();
+            us_t getOffsetError();
+
+            /*
+             * Get the current adjusted time
+             */
+            std::chrono::time_point<std::chrono::system_clock, us_t> getCurrentAdjustedTime();
+        };
+
+        class TinySync : public Base
         {
-            us_t value{0};
-            us_t error{0};
-        } currentOffset; // current offset in µseconds
+        public:
+            TinySync() = default;
+        private:
+            void cleanup() final;
+        };
 
-        us_t diff_factor; // difference between current lines
-        uint32_t processed_timestamps;
-
-        SyncAlgorithm();
-
-        void __recalculateEstimates();
-
-        /*
-         * Subclasses need to override this function with their own cleanup method.
-         */
-
-        virtual void cleanup() = 0;
-
-        /*
-         * Helper instance method to add a lower-bound point to the algorithm.
-         */
-        virtual LPointPtr addLowPoint(us_t Tb, us_t To);
-
-        /*
-        * Helper instance method to add a higher-bound point to the algorithm.
-        */
-        virtual HPointPtr addHighPoint(us_t Tb, us_t Tr);
-        virtual bool addConstraint(LPointPtr lp, HPointPtr hp);
-    public:
-        /*
-         * Add a new DataPoint and recalculate offset and drift.
-         */
-        void addDataPoint(us_t To, us_t Tb, us_t Tr);
-
-        /*
-         * Get the current estimated relative clock drift.
-         */
-        long double getDrift();
-        long double getDriftError();
-
-        /*
-         * Get the current estimated relative clock offset in nanoseconds.
-         */
-        us_t getOffset();
-        us_t getOffsetError();
-
-        /*
-         * Get the current adjusted time
-         */
-        std::chrono::time_point<std::chrono::system_clock, us_t> getCurrentAdjustedTime();
-    };
-
-    class TinySyncAlgorithm : public SyncAlgorithm
-    {
-    public:
-        TinySyncAlgorithm() = default;
-    private:
-        void cleanup() final;
-    };
-
-    class MiniSyncAlgorithm : public SyncAlgorithm
-    {
-    public:
-        MiniSyncAlgorithm() = default;
-    private:
-        std::unordered_map<std::pair<LPointPtr, LPointPtr>, long double, ppair_hash> low_slopes;
-        std::unordered_map<std::pair<HPointPtr, HPointPtr>, long double, ppair_hash> high_slopes;
-        void cleanup() final;
-        LPointPtr addLowPoint(us_t Tb, us_t To) final;
-        HPointPtr addHighPoint(us_t Tb, us_t Tr) final;
-    };
+        class MiniSync : public Base
+        {
+        public:
+            MiniSync() = default;
+        private:
+            std::unordered_map<std::pair<LPointPtr, LPointPtr>, long double, ppair_hash> low_slopes;
+            std::unordered_map<std::pair<HPointPtr, HPointPtr>, long double, ppair_hash> high_slopes;
+            void cleanup() final;
+            LPointPtr addLowPoint(us_t Tb, us_t To) final;
+            HPointPtr addHighPoint(us_t Tb, us_t Tr) final;
+        };
+    }
 }
 
 

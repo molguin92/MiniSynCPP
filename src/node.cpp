@@ -449,7 +449,7 @@ void MiniSync::SyncNode::sync()
 MiniSync::SyncNode::SyncNode(uint16_t bind_port,
                              std::string& peer,
                              uint16_t peer_port,
-                             std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo,
+                             std::unique_ptr<MiniSync::Algorithms::Base>&& sync_algo,
                              std::string stat_file_path,
                              double bandwidth_mbps,
                              double min_ping_rtt_ms) :

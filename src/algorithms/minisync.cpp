@@ -17,7 +17,7 @@
 /*
  * Get the current relative drift of the clock.
  */
-long double MiniSync::SyncAlgorithm::getDrift()
+long double MiniSync::Algorithms::Base::getDrift()
 {
     return this->currentDrift.value;
 }
@@ -25,7 +25,7 @@ long double MiniSync::SyncAlgorithm::getDrift()
 /*
  * Get the current (one-sided) error of the relative clock drift.
  */
-long double MiniSync::SyncAlgorithm::getDriftError()
+long double MiniSync::Algorithms::Base::getDriftError()
 {
     return this->currentDrift.error;
 }
@@ -33,7 +33,7 @@ long double MiniSync::SyncAlgorithm::getDriftError()
 /*
  * Get the current relative offset of the clock.
  */
-MiniSync::us_t MiniSync::SyncAlgorithm::getOffset()
+MiniSync::us_t MiniSync::Algorithms::Base::getOffset()
 {
     return this->currentOffset.value;
 }
@@ -41,7 +41,7 @@ MiniSync::us_t MiniSync::SyncAlgorithm::getOffset()
 /*
  * Get the current (one-sided) error of the relative clock offset.
  */
-MiniSync::us_t MiniSync::SyncAlgorithm::getOffsetError()
+MiniSync::us_t MiniSync::Algorithms::Base::getOffsetError()
 {
     return this->currentOffset.error;
 }
@@ -49,7 +49,7 @@ MiniSync::us_t MiniSync::SyncAlgorithm::getOffsetError()
 /*
  * Get the current time as a std::chrono::time_point, adjusted using the current relative offset and drift.
  */
-std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::SyncAlgorithm::getCurrentAdjustedTime()
+std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::Algorithms::Base::getCurrentAdjustedTime()
 {
     auto t_now = std::chrono::system_clock::now().time_since_epoch();
     return std::chrono::time_point<std::chrono::system_clock, us_t>{
@@ -61,7 +61,7 @@ std::chrono::time_point<std::chrono::system_clock, MiniSync::us_t> MiniSync::Syn
 /*
  * Adds a data point to the algorithm and recalculates the drift and offset estimates.
  */
-void MiniSync::SyncAlgorithm::addDataPoint(us_t To, us_t Tb, us_t Tr)
+void MiniSync::Algorithms::Base::addDataPoint(us_t To, us_t Tb, us_t Tr)
 {
     // add points to internal storage
     //this->low_points.insert(std::make_shared<LowPoint>(Tb, To));
@@ -80,7 +80,7 @@ void MiniSync::SyncAlgorithm::addDataPoint(us_t To, us_t Tb, us_t Tr)
     }
 }
 
-MiniSync::SyncAlgorithm::SyncAlgorithm() :
+MiniSync::Algorithms::Base::Base() :
     processed_timestamps(0),
     diff_factor(std::numeric_limits<long double>::max())
 {
@@ -111,7 +111,7 @@ MiniSync::SyncAlgorithm::SyncAlgorithm() :
  * Drift_Error = (A_upper - A_lower)/2
  * Offset_Error = (B_upper - B_lower)/2
  */
-void MiniSync::SyncAlgorithm::__recalculateEstimates()
+void MiniSync::Algorithms::Base::__recalculateEstimates()
 {
     // assume timestamps come in time order
     //
@@ -175,9 +175,9 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates()
 #endif
 }
 
-MiniSync::LPointPtr MiniSync::MiniSyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
+MiniSync::LPointPtr MiniSync::Algorithms::MiniSync::addLowPoint(us_t Tb, us_t To)
 {
-    auto lp = SyncAlgorithm::addLowPoint(Tb, To);
+    auto lp = Base::addLowPoint(Tb, To);
     // calculate the slopes for the minisync algo
     std::pair<LPointPtr, LPointPtr> pair;
     long double M;
@@ -194,9 +194,9 @@ MiniSync::LPointPtr MiniSync::MiniSyncAlgorithm::addLowPoint(MiniSync::us_t Tb, 
     return lp;
 }
 
-MiniSync::HPointPtr MiniSync::MiniSyncAlgorithm::addHighPoint(MiniSync::us_t Tb, MiniSync::us_t Tr)
+MiniSync::HPointPtr MiniSync::Algorithms::MiniSync::addHighPoint(us_t Tb, us_t Tr)
 {
-    auto hp = SyncAlgorithm::addHighPoint(Tb, Tr);
+    auto hp = Base::addHighPoint(Tb, Tr);
     // calculate the slopes for the minisync algo
     std::pair<HPointPtr, HPointPtr> pair;
     long double M;
@@ -213,7 +213,7 @@ MiniSync::HPointPtr MiniSync::MiniSyncAlgorithm::addHighPoint(MiniSync::us_t Tb,
     return hp;
 }
 
-MiniSync::LPointPtr MiniSync::SyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
+MiniSync::LPointPtr MiniSync::Algorithms::Base::addLowPoint(us_t Tb, us_t To)
 {
     auto lp = std::make_shared<LowPoint>(Tb, To);
     std::pair<LPointPtr, HPointPtr> pair;
@@ -228,7 +228,7 @@ MiniSync::LPointPtr MiniSync::SyncAlgorithm::addLowPoint(MiniSync::us_t Tb, Mini
     return lp; // return a copy of the created pointer.
 }
 
-MiniSync::HPointPtr MiniSync::SyncAlgorithm::addHighPoint(MiniSync::us_t Tb, MiniSync::us_t Tr)
+MiniSync::HPointPtr MiniSync::Algorithms::Base::addHighPoint(us_t Tb, us_t Tr)
 {
     auto hp = std::make_shared<HighPoint>(Tb, Tr);
 
@@ -245,7 +245,7 @@ MiniSync::HPointPtr MiniSync::SyncAlgorithm::addHighPoint(MiniSync::us_t Tb, Min
 /*
  * Helper instance method to add a constraint linear equation given a lower-bound and an upper-bound point.
  */
-bool MiniSync::SyncAlgorithm::addConstraint(MiniSync::LPointPtr lp, MiniSync::HPointPtr hp)
+bool MiniSync::Algorithms::Base::addConstraint(LPointPtr lp, HPointPtr hp)
 {
     auto pair = std::make_pair(lp, hp);
 
@@ -267,7 +267,7 @@ bool MiniSync::SyncAlgorithm::addConstraint(MiniSync::LPointPtr lp, MiniSync::HP
 /*
  * Removes un-used data points from the algorithm internal storage.
  */
-void MiniSync::TinySyncAlgorithm::cleanup()
+void MiniSync::Algorithms::TinySync::cleanup()
 {
     // cleanup
     for (auto iter = low_points.begin(); iter != low_points.end();)
@@ -304,7 +304,7 @@ void MiniSync::TinySyncAlgorithm::cleanup()
 /*
  * Removes un-used data points from the algorithm internal storage.
  */
-void MiniSync::MiniSyncAlgorithm::cleanup()
+void MiniSync::Algorithms::MiniSync::cleanup()
 {
     // cleanup
     for (auto iter_j = low_points.begin(); iter_j != low_points.end();)

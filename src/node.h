@@ -71,7 +71,7 @@ namespace MiniSync
         const uint16_t peer_port;
         SOCKADDR peer_addr;
         const std::string stat_file_path;
-        std::unique_ptr<MiniSync::SyncAlgorithm> algo;
+        std::unique_ptr<MiniSync::Algorithms::Base> algo;
         MiniSync::Stats::SyncStats stats;
         void handshake();
         void sync();
@@ -84,7 +84,7 @@ namespace MiniSync
         SyncNode(uint16_t bind_port,
                  std::string& peer,
                  uint16_t peer_port,
-                 std::unique_ptr<MiniSync::SyncAlgorithm>&& sync_algo,
+                 std::unique_ptr<MiniSync::Algorithms::Base>&& sync_algo,
                  std::string stat_file_path = "",
                  double bandwidth_mbps = -1.0,
                  double min_ping_rtt_ms = -1.0);
