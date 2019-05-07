@@ -8,13 +8,13 @@
 #ifndef TINYSYNC___MINISYNC_H
 #define TINYSYNC___MINISYNC_H
 
-#include <chrono>
 #include <tuple>
 #include <exception>
 #include <unordered_map>
 #include <set>
 #include <memory>
 #include "constraints.h"
+#include "minisync_api.h"
 
 namespace MiniSync
 {
@@ -50,7 +50,7 @@ namespace MiniSync
 
     namespace Algorithms
     {
-        class Base
+        class Base : public MiniSync::API::Algorithm
         {
         protected:
             // constraints
@@ -100,27 +100,12 @@ namespace MiniSync
             virtual HPointPtr addHighPoint(us_t Tb, us_t Tr);
             virtual bool addConstraint(LPointPtr lp, HPointPtr hp);
         public:
-            /*
-             * Add a new DataPoint and recalculate offset and drift.
-             */
-            void addDataPoint(us_t To, us_t Tb, us_t Tr);
-
-            /*
-             * Get the current estimated relative clock drift.
-             */
-            long double getDrift();
-            long double getDriftError();
-
-            /*
-             * Get the current estimated relative clock offset in nanoseconds.
-             */
-            us_t getOffset();
-            us_t getOffsetError();
-
-            /*
-             * Get the current adjusted time
-             */
-            std::chrono::time_point<std::chrono::system_clock, us_t> getCurrentAdjustedTime();
+            void addDataPoint(us_t To, us_t Tb, us_t Tr) final;
+            long double getDrift() final;
+            long double getDriftError() final;
+            us_t getOffset() final;
+            us_t getOffsetError() final;
+            std::chrono::time_point<std::chrono::system_clock, us_t> getCurrentAdjustedTime() final;
         };
 
         class TinySync : public Base
