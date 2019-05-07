@@ -11,7 +11,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <string>
-#include "algorithms/minisync_api.h"
+#include "../algorithms/minisync_api.h"
 #include <protocol.pb.h>
 #include <cinttypes>
 #include "stats.h"

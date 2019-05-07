@@ -1,10 +1,10 @@
 cmake_minimum_required(VERSION 3.10)
 project(MiniSynCPP)
 set(CMAKE_CXX_STANDARD 11)
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/config.h)
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/demo/config.h)
 
 # read config from config.h
-file(READ src/config.h CONFIG)
+file(READ src/demo/config.h CONFIG)
 string(REGEX MATCH "APP_VERSION_MAJOR ([0-9]*)" _ ${CONFIG})
 set(MiniSynCPP_VERSION_MAJOR ${CMAKE_MATCH_1})
 string(REGEX MATCH "APP_VERSION_MINOR ([0-9]*)" _ ${CONFIG})
@@ -73,9 +73,9 @@ set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protoc/bin/protoc)
 set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.h)
 add_custom_command(OUTPUT ${PROTO_SRC}
         COMMAND ${PROTOC_PATH} protocol.proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
-        MAIN_DEPENDENCY ${PROJECT_SOURCE_DIR}/src/net/protocol.proto
+        MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/src/demo/net/protocol.proto
         DEPENDS protoc
-        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/net)
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/demo/net)
 
 ## add static library for just the algorithm
 add_library(minisyncpp STATIC
@@ -85,12 +85,12 @@ add_library(minisyncpp STATIC
 target_compile_definitions(minisyncpp PUBLIC -DLOGURU_ENABLE)
 
 add_executable(MiniSyncDemo
-        src/main.cpp src/config.h
+        src/demo/main.cpp src/demo/config.h
         src/algorithms/minisync_api.h # minisync algorithm API
-        src/node.cpp src/node.h
-        src/exception.cpp src/exception.h
+        src/demo/node.cpp src/demo/node.h
+        src/demo/exception.cpp src/demo/exception.h
         ${PROTO_SRC}
-        src/stats.cpp src/stats.h
+        src/demo/stats.cpp src/demo/stats.h
         include/CLI11/CLI11.hpp
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
         )
