@@ -86,7 +86,7 @@ target_compile_definitions(minisyncpp PUBLIC -DLOGURU_ENABLE)
 add_executable(MiniSyncDemo
         src/main.cpp src/config.h
         # comment out the actual algorithm, as we'll link it in from the library instead
-        # src/algorithms/minisync.cpp src/algorithms/minisync.h
+        src/algorithms/minisync.h
         # src/algorithms/constraints.cpp src/algorithms/constraints.h
         src/node.cpp src/node.h
         src/exception.cpp src/exception.h
