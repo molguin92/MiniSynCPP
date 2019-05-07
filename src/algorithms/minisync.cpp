@@ -6,9 +6,13 @@
 */
 
 #include <cstdlib>
-#include <loguru/loguru.hpp>
-#include "minisync.h"
 #include <algorithm>
+
+#ifdef LOGURU_ENABLE
+#include <loguru/loguru.hpp>
+#endif
+
+#include "minisync.h"
 
 /*
  * Get the current relative drift of the clock.
@@ -148,15 +152,27 @@ void MiniSync::SyncAlgorithm::__recalculateEstimates()
 
     this->cleanup();
 
+#ifdef LOGURU_ENABLE
     CHECK_NE_F(current_low.get(), nullptr, "current_low is null!");
     CHECK_NE_F(current_high.get(), nullptr, "current_high is null!");
+#else
+    if (current_low.get() == nullptr)
+        throw std::runtime_error("current_low is null!");
+    if (current_high.get() == nullptr)
+        throw std::runtime_error("current_high is null!");
+#endif
 
     this->currentDrift.value = (current_low->getA() + current_high->getA()) / 2;
     this->currentOffset.value = (current_low->getB() + current_high->getB()) / 2;
     this->currentDrift.error = (current_low->getA() - current_high->getA()) / 2;
     this->currentOffset.error = (current_high->getB() - current_low->getB()) / 2;
 
+#ifdef LOGURU_ENABLE
     CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
+#else
+    if (this->currentDrift.value <= 0)
+        throw std::runtime_error("Drift must be >=0 for monotonically increasing clocks...");
+#endif
 }
 
 MiniSync::LPointPtr MiniSync::MiniSyncAlgorithm::addLowPoint(MiniSync::us_t Tb, MiniSync::us_t To)
@@ -361,6 +377,7 @@ void MiniSync::MiniSyncAlgorithm::cleanup()
                     }
                     catch (std::out_of_range& e)
                     {
+#ifdef LOGURU_ENABLE
                         DLOG_F(WARNING, "iter_i: (%Lf, %Lf)",
                                iter_i->get()->getX().count(),
                                iter_i->get()->getY().count());
@@ -370,6 +387,7 @@ void MiniSync::MiniSyncAlgorithm::cleanup()
                         DLOG_F(WARNING, "iter_k: (%Lf, %Lf)",
                                iter_k->get()->getX().count(),
                                iter_k->get()->getY().count());
+#endif
                         throw;
                     }
                 }

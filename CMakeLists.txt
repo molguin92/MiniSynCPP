@@ -93,6 +93,9 @@ add_dependencies(MiniSynCPP protobuf-external protoc)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)
 set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_END_STATIC 1)
 
+target_compile_definitions(MiniSynCPP
+        PUBLIC -DLOGURU_ENABLE) # enable loguru
+
 target_link_libraries(MiniSynCPP dl ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static/libprotobuf.a)
 # be very specific with the protobuf lib
