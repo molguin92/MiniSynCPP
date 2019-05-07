@@ -15,7 +15,7 @@ Compilation is then just a matter of running:
 $> mkdir ./cmake_build 
 $> cd ./cmake_build
 $> cmake ..
-$> cmake --build . --target MiniSynCPP -- -j 4
+$> cmake --build . --target all -- -j 4
 ```
 
 Note: Even though the project uses the Google Protobuf libraries, it is not necessary to have these installed when 
