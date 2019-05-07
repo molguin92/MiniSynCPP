@@ -78,12 +78,12 @@ add_custom_command(OUTPUT ${PROTO_SRC}
         WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}/src/net)
 
 ## add static library for just the algorithm
-add_library(libminisyncpp STATIC
+add_library(minisyncpp STATIC
         src/algorithms/constraints.h src/algorithms/constraints.cpp
         src/algorithms/minisync.h src/algorithms/minisync.cpp)
-target_compile_definitions(libminisyncpp PUBLIC -DLOGURU_ENABLE)
+target_compile_definitions(minisyncpp PUBLIC -DLOGURU_ENABLE)
 
-add_executable(MiniSynCPP
+add_executable(MiniSyncDemo
         src/main.cpp src/config.h
         # comment out the actual algorithm, as we'll link it in from the library instead
         # src/algorithms/minisync.cpp src/algorithms/minisync.h
@@ -96,12 +96,12 @@ add_executable(MiniSynCPP
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
         )
 
-add_dependencies(MiniSynCPP protobuf-external protoc libminisyncpp)
-set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_START_STATIC 1)
-set_target_properties(MiniSynCPP PROPERTIES LINK_SEARCH_END_STATIC 1)
+add_dependencies(MiniSyncDemo protobuf-external protoc minisyncpp)
+set_target_properties(MiniSyncDemo PROPERTIES LINK_SEARCH_START_STATIC 1)
+set_target_properties(MiniSyncDemo PROPERTIES LINK_SEARCH_END_STATIC 1)
 
-target_link_libraries(MiniSynCPP
-        libminisyncpp # link against the algorithm
+target_link_libraries(MiniSyncDemo
+        minisyncpp # link against the algorithm
         dl ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static/libprotobuf.a)
 # be very specific with the protobuf lib
