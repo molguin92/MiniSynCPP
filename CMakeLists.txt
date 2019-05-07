@@ -63,7 +63,7 @@ ExternalProject_Add(
         BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/protoc/bin/protoc
 )
 
-include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR})
+include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/include)
 link_directories(lib lib/static
         ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib
         ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static)
@@ -83,6 +83,18 @@ add_library(minisyncpp STATIC
         src/algorithms/minisync.h src/algorithms/minisync.cpp
         src/algorithms/minisync_api.h src/algorithms/minisync_api.cpp)
 target_compile_definitions(minisyncpp PUBLIC -DLOGURU_ENABLE)
+set_target_properties(minisyncpp
+        PROPERTIES
+        LINK_SEARCH_START_STATIC 1
+        LINK_SEARCH_END_STATIC 1
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
+
+# copy the header to the binary directory
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/minisync_api.h
+        ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
+        COPYONLY)
 
 add_executable(MiniSyncDemo
         src/demo/main.cpp src/demo/config.h
@@ -96,8 +108,14 @@ add_executable(MiniSyncDemo
         )
 
 add_dependencies(MiniSyncDemo protobuf-external protoc minisyncpp)
-set_target_properties(MiniSyncDemo PROPERTIES LINK_SEARCH_START_STATIC 1)
-set_target_properties(MiniSyncDemo PROPERTIES LINK_SEARCH_END_STATIC 1)
+
+set_target_properties(MiniSyncDemo
+        PROPERTIES
+        LINK_SEARCH_START_STATIC 1
+        LINK_SEARCH_END_STATIC 1
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
 
 target_link_libraries(MiniSyncDemo
         minisyncpp # link against the algorithm

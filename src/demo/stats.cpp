@@ -7,7 +7,7 @@
 
 #include "stats.h"
 #include <chrono>
-#include "../algorithms/minisync_api.h"
+#include <minisync_api.h>
 //#include "algorithms/constraints.h"
 #include <fstream>
 #include <loguru/loguru.hpp>
