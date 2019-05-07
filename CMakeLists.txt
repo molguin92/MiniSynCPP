@@ -3,12 +3,18 @@ project(MiniSynCPP)
 set(CMAKE_CXX_STANDARD 11)
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/demo/config.h)
 
-# read config from config.h
+# read configs
 file(READ src/demo/config.h CONFIG)
 string(REGEX MATCH "APP_VERSION_MAJOR ([0-9]*)" _ ${CONFIG})
-set(MiniSynCPP_VERSION_MAJOR ${CMAKE_MATCH_1})
+set(MiniSyncDemo_VERSION_MAJOR ${CMAKE_MATCH_1})
 string(REGEX MATCH "APP_VERSION_MINOR ([0-9]*)" _ ${CONFIG})
-set(MiniSynCPP_VERSION_MINOR ${CMAKE_MATCH_1})
+set(MiniSyncDemo_VERSION_MINOR ${CMAKE_MATCH_1})
+
+file(READ src/algorithms/config.h CONFIG)
+string(REGEX MATCH "LIB_BUILD_VERSION ([0-9]*)" _ ${CONFIG})
+set(MiniSynCPP_BUILD_VERSION ${CMAKE_MATCH_1})
+string(REGEX MATCH "LIB_ABI_VERSION ([0-9]*)" _ ${CONFIG})
+set(MiniSynCPP_ABI_VERSION ${CMAKE_MATCH_1})
 
 include(ExternalProject REQUIRED)
 find_package(Threads REQUIRED)
@@ -78,18 +84,27 @@ add_custom_command(OUTPUT ${PROTO_SRC}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/demo/net)
 
 ## add static library for just the algorithm
-add_library(minisyncpp STATIC
+set(LIB_SRC
         src/algorithms/constraints.h src/algorithms/constraints.cpp
         src/algorithms/minisync.h src/algorithms/minisync.cpp
-        src/algorithms/minisync_api.h src/algorithms/minisync_api.cpp)
-target_compile_definitions(minisyncpp PUBLIC -DLOGURU_ENABLE)
-set_target_properties(minisyncpp
-        PROPERTIES
+        src/algorithms/minisync_api.h src/algorithms/minisync_api.cpp src/algorithms/config.h)
+
+set(LIB_PROPERTIES
         LINK_SEARCH_START_STATIC 1
         LINK_SEARCH_END_STATIC 1
+        VERSION ${MiniSynCPP_BUILD_VERSION}
+        SOVERSION ${MiniSynCPP_ABI_VERSION}
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
+        OUTPUT_NAME minisyncpp)
+
+add_library(minisyncpp_static STATIC ${LIB_SRC})
+add_library(minisyncpp_shared SHARED ${LIB_SRC})
+target_compile_definitions(minisyncpp_static PUBLIC -DLOGURU_ENABLE)
+target_compile_definitions(minisyncpp_shared PUBLIC -DLOGURU_ENABLE)
+set_target_properties(minisyncpp_static PROPERTIES ${LIB_PROPERTIES})
+set_target_properties(minisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 
 # copy the header to the binary directory
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/minisync_api.h
@@ -98,7 +113,6 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/minisync_api.h
 
 add_executable(MiniSyncDemo
         src/demo/main.cpp src/demo/config.h
-        src/algorithms/minisync_api.h # minisync algorithm API
         src/demo/node.cpp src/demo/node.h
         src/demo/exception.cpp src/demo/exception.h
         ${PROTO_SRC}
@@ -107,18 +121,19 @@ add_executable(MiniSyncDemo
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
         )
 
-add_dependencies(MiniSyncDemo protobuf-external protoc minisyncpp)
+add_dependencies(MiniSyncDemo protobuf-external protoc minisyncpp_static)
 
 set_target_properties(MiniSyncDemo
         PROPERTIES
         LINK_SEARCH_START_STATIC 1
         LINK_SEARCH_END_STATIC 1
+        VERSION "${MiniSyncDemo_VERSION_MAJOR}.${MiniSyncDemo_VERSION_MINOR}"
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
 
 target_link_libraries(MiniSyncDemo
-        minisyncpp # link against the algorithm
+        minisyncpp_static # link against the algorithm
         dl ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static/libprotobuf.a)
 # be very specific with the protobuf lib
