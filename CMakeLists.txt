@@ -57,17 +57,21 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/minisync_api.h
         COPYONLY)
 
 ### Library tests setup
-add_executable(minisyncpp_tests ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp)
-add_dependencies(minisyncpp_tests minisyncpp_static)
-target_link_libraries(minisyncpp_tests minisyncpp_static)
-set_target_properties(minisyncpp_tests
-        PROPERTIES
-        LINK_SEARCH_START_STATIC 1
-        LINK_SEARCH_END_STATIC 1
-        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib/static"
-        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests"
-        OUTPUT_NAME minisyncpp)
+if (DISABLE_TESTS)
+else ()
+    add_executable(minisyncpp_tests ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp)
+    add_dependencies(minisyncpp_tests minisyncpp_static)
+    target_link_libraries(minisyncpp_tests minisyncpp_static)
+
+    set_target_properties(minisyncpp_tests
+            PROPERTIES
+            LINK_SEARCH_START_STATIC 1
+            LINK_SEARCH_END_STATIC 1
+            ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib/static"
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests"
+            OUTPUT_NAME minisyncpp)
+endif ()
 
 ### DEMO SETUP
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/demo/config.h)

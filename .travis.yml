@@ -12,4 +12,8 @@ before_install:
   - cmake ..
 
 script:
-  - cmake --build . --target all -- -j 4
+  - cmake --build . --target all -DCMAKE_BUILD_TYPE:STRING=DEBUG -- -j 4
+
+# testing
+after_success:
+  - ./tests/minisyncpp
