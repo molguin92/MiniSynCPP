@@ -59,7 +59,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/minisync_api.h
 ### Library tests setup
 if (DISABLE_TESTS)
 else ()
-    add_executable(minisyncpp_tests ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp)
+    add_executable(minisyncpp_tests
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests_main.cpp)
     add_dependencies(minisyncpp_tests minisyncpp_static)
     target_link_libraries(minisyncpp_tests minisyncpp_static)
 

@@ -4,11 +4,26 @@
 * Copyright© 2019 Manuel Olguín Muñoz
 * See LICENSE file included in the root directory of this project for licensing and copyright details.
 */
-
-#define CATCH_CONFIG_MAIN
-
-#include <catch2/catch.hpp>
 #include <minisync_api.h>
+#include <catch2/catch.hpp>
+#include <sstream>
+
+namespace Catch
+{
+    template<>
+    struct StringMaker<MiniSync::us_t>
+    {
+        static std::string convert(const MiniSync::us_t& value)
+        {
+            auto ns = std::chrono::duration_cast<std::chrono::duration<long long int, std::nano>>(value);
+            auto ms = (ns.count() / 1000) + ((ns.count() % 1000) / 1000.0);
+
+            std::ostringstream os;
+            os << ms << " µs";
+            return os.str();
+        }
+    };
+}
 
 TEST_CASE("Basic testing of TinySync and MiniSync", "[TinySync, MiniSync]")
 {
