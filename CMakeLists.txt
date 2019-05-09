@@ -63,7 +63,7 @@ else ()
             ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests_main.cpp)
     add_dependencies(minisyncpp_tests minisyncpp_static)
-    target_link_libraries(minisyncpp_tests minisyncpp_static)
+    target_link_libraries(minisyncpp_tests minisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
 
     set_target_properties(minisyncpp_tests
             PROPERTIES

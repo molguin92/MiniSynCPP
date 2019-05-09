@@ -7,6 +7,8 @@
 #include <minisync_api.h>
 #include <catch2/catch.hpp>
 #include <sstream>
+#include <thread> // sleep_for
+#include <random>
 
 namespace Catch
 {
@@ -41,10 +43,10 @@ TEST_CASE("Basic testing of TinySync and MiniSync", "[TinySync, MiniSync]")
     }
 
     REQUIRE(algorithm != nullptr); // check that the algorithm is not a nullpointer
-    REQUIRE(algorithm->getDrift() == 1.0);
-    REQUIRE(algorithm->getDriftError() == 0.0);
-    REQUIRE(algorithm->getOffset() == MiniSync::us_t{0});
-    REQUIRE(algorithm->getOffsetError() == MiniSync::us_t{0});
+    REQUIRE(algorithm->getDrift() == Approx(1.0).epsilon(0.001));
+    REQUIRE(algorithm->getDriftError() == Approx(0.0).epsilon(0.001));
+    REQUIRE(algorithm->getOffset().count() == Approx(MiniSync::us_t{0}.count()).epsilon(0.001));
+    REQUIRE(algorithm->getOffsetError().count() == Approx(MiniSync::us_t{0}.count()).epsilon(0.001));
 
     // initial conditions
     MiniSync::us_t To{-1}, Tbr{0}, Tbt{1}, Tr{2};
@@ -61,15 +63,46 @@ TEST_CASE("Basic testing of TinySync and MiniSync", "[TinySync, MiniSync]")
 
     algorithm->addDataPoint(To, Tbr, Tr);
     // just adding one point does not trigger an update
-    REQUIRE(algorithm->getDrift() == 1.0);
-    REQUIRE(algorithm->getDriftError() == 0.0);
-    REQUIRE(algorithm->getOffset() == MiniSync::us_t{0});
-    REQUIRE(algorithm->getOffsetError() == MiniSync::us_t{0});
+    REQUIRE(algorithm->getDrift() == Approx(1.0).epsilon(0.001));
+    REQUIRE(algorithm->getDriftError() == Approx(0.0).epsilon(0.001));
+    REQUIRE(algorithm->getOffset().count() == Approx(MiniSync::us_t{0}.count()).epsilon(0.001));
+    REQUIRE(algorithm->getOffsetError().count() == Approx(MiniSync::us_t{0}.count()).epsilon(0.001));
 
     algorithm->addDataPoint(To, Tbt, Tr);
     // now algorithm should recalculate
-    REQUIRE(algorithm->getDrift() == init_drift);
-    REQUIRE(algorithm->getDriftError() == init_drift_error);
-    REQUIRE(algorithm->getOffset() == init_offset);
-    REQUIRE(algorithm->getOffsetError() == init_offset_error);
+    REQUIRE(algorithm->getDrift() == Approx(init_drift).epsilon(0.001));
+    REQUIRE(algorithm->getDriftError() == Approx(init_drift_error).epsilon(0.001));
+    REQUIRE(algorithm->getOffset().count() == Approx(init_offset.count()).epsilon(0.001));
+    REQUIRE(algorithm->getOffsetError().count() == Approx(init_offset_error.count()).epsilon(0.001));
+}
+
+TEST_CASE("Side by side tests", "[timing]")
+{
+    auto tiny = MiniSync::API::Factory::createTinySync();
+    auto mini = MiniSync::API::Factory::createMiniSync();
+
+    auto T0 = std::chrono::steady_clock::now();
+    using clock = std::chrono::steady_clock;
+
+    // we'll use some random delays, that way we get some variability in the inputs to the algorithms
+    std::default_random_engine gen;
+    std::uniform_int_distribution<uint32_t> dist(0, 10);
+
+    // run algorithms in a loop. MiniSync should always give an equal OR better result compared to TinySync
+    for (int i = 0; i < 50; ++i)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds{dist(gen)});
+        
+        auto To = clock::now() - T0;
+        std::this_thread::sleep_for(std::chrono::milliseconds{dist(gen)});
+        auto Tb = clock::now() - T0;
+        std::this_thread::sleep_for(std::chrono::milliseconds{dist(gen)});
+        auto Tr = clock::now() - T0;
+
+        tiny->addDataPoint(To, Tb, Tr);
+        mini->addDataPoint(To, Tb, Tr);
+
+        REQUIRE(mini->getOffsetError() <= tiny->getOffsetError());
+        REQUIRE(mini->getDriftError() <= tiny->getDriftError());
+    }
 }
