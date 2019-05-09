@@ -10,23 +10,51 @@
 #include <catch2/catch.hpp>
 #include <minisync_api.h>
 
-TEST_CASE("Testing TinySync", "[TinySync]")
+TEST_CASE("Basic testing of TinySync and MiniSync", "[TinySync, MiniSync]")
 {
 
-    auto TinySync = MiniSync::API::Factory::createTinySync();
+    std::shared_ptr<MiniSync::API::Algorithm> algorithm;
+    REQUIRE(algorithm == nullptr);
+
+    SECTION("Set up TinySync")
+    {
+        algorithm = MiniSync::API::Factory::createTinySync();
+    }
+    SECTION("Set up MiniSync")
+    {
+        algorithm = MiniSync::API::Factory::createMiniSync();
+    }
+
+    REQUIRE(algorithm != nullptr); // check that the algorithm is not a nullpointer
+    REQUIRE(algorithm->getDrift() == 1.0);
+    REQUIRE(algorithm->getDriftError() == 0.0);
+    REQUIRE(algorithm->getOffset() == MiniSync::us_t{0});
+    REQUIRE(algorithm->getOffsetError() == MiniSync::us_t{0});
 
     // initial conditions
-    MiniSync::us_t To{0}, Tbr{1}, Tbt{2}, Tr{3};
-    TinySync->addDataPoint(To, Tbr, Tr);
+    MiniSync::us_t To{-1}, Tbr{0}, Tbt{1}, Tr{2};
 
-    REQUIRE(TinySync->getDrift() == 1.0);
-    REQUIRE(TinySync->getDriftError() == 0.0);
-    REQUIRE(TinySync->getOffset() == MiniSync::us_t{0});
-    REQUIRE(TinySync->getOffsetError() == MiniSync::us_t{0});
+    // initial offset and drift
+    // initial coordinates are on x = 0, so max_offset and min_offset should simply be the y coordinates
+    auto high_drift = (To - Tr) / (Tbt - Tbr);
+    auto low_drift = (Tr - To) / (Tbt - Tbr);
+    auto init_drift = (high_drift + low_drift) / 2.0;
+    auto init_drift_error = (low_drift - high_drift) / 2.0;
 
-    TinySync->addDataPoint(To, Tbt, Tr);
+    auto init_offset = (To + Tr) / 2.0;
+    auto init_offset_error = (Tr - To) / 2.0;
 
-    REQUIRE(TinySync->getDrift() == 0.0);
-    REQUIRE(TinySync->getOffset() == MiniSync::us_t{1.5});
+    algorithm->addDataPoint(To, Tbr, Tr);
+    // just adding one point does not trigger an update
+    REQUIRE(algorithm->getDrift() == 1.0);
+    REQUIRE(algorithm->getDriftError() == 0.0);
+    REQUIRE(algorithm->getOffset() == MiniSync::us_t{0});
+    REQUIRE(algorithm->getOffsetError() == MiniSync::us_t{0});
 
+    algorithm->addDataPoint(To, Tbt, Tr);
+    // now algorithm should recalculate
+    REQUIRE(algorithm->getDrift() == init_drift);
+    REQUIRE(algorithm->getDriftError() == init_drift_error);
+    REQUIRE(algorithm->getOffset() == init_offset);
+    REQUIRE(algorithm->getOffsetError() == init_offset_error);
 }
