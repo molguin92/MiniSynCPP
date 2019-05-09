@@ -9,10 +9,10 @@ dist: xenial
 before_install:
   - mkdir ./cmake_build
   - cd ./cmake_build
-  - cmake ..
+  - cmake -DCMAKE_BUILD_TYPE:STRING=DEBUG ..
 
 script:
-  - cmake --build . --target all -DCMAKE_BUILD_TYPE:STRING=DEBUG -- -j 4
+  - cmake --build . --target all -- -j 4
 
 # testing
 after_success:
