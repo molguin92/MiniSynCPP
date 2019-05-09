@@ -16,4 +16,4 @@ script:
 
 # testing
 after_success:
-  - ./tests/minisyncpp
+  - ./tests/minisyncpp --success
