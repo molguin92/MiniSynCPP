@@ -8,6 +8,14 @@ set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
 set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
 
+# directories
+include_directories(include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/include)
+link_directories(lib lib/static
+        ${CMAKE_CURRENT_BINARY_DIR}/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/lib/static
+        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static)
+
 ### LIBRARY SETUP
 # library config
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/algorithms/config.h)
@@ -17,8 +25,9 @@ set(MiniSynCPP_BUILD_VERSION ${CMAKE_MATCH_1})
 string(REGEX MATCH "LIB_ABI_VERSION ([0-9]*)" _ ${CONFIG})
 set(MiniSynCPP_ABI_VERSION ${CMAKE_MATCH_1})
 
-## add static library for just the algorithm
+## add library for just the algorithm
 set(LIB_SRC
+        include/loguru/loguru.cpp include/loguru/loguru.hpp
         src/algorithms/constraints.h src/algorithms/constraints.cpp
         src/algorithms/minisync.h src/algorithms/minisync.cpp
         src/algorithms/minisync_api.h src/algorithms/minisync_api.cpp src/algorithms/config.h)
@@ -28,13 +37,15 @@ set(LIB_PROPERTIES
         LINK_SEARCH_END_STATIC 1
         VERSION ${MiniSynCPP_BUILD_VERSION}
         SOVERSION ${MiniSynCPP_ABI_VERSION}
-        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib/static"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
         OUTPUT_NAME minisyncpp)
 
 add_library(minisyncpp_static STATIC ${LIB_SRC})
 add_library(minisyncpp_shared SHARED ${LIB_SRC})
+target_link_libraries(minisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(minisyncpp_shared dl ${CMAKE_THREAD_LIBS_INIT})
 target_compile_definitions(minisyncpp_static PUBLIC -DLOGURU_ENABLE)
 target_compile_definitions(minisyncpp_shared PUBLIC -DLOGURU_ENABLE)
 set_target_properties(minisyncpp_static PROPERTIES ${LIB_PROPERTIES})
@@ -44,6 +55,19 @@ set_target_properties(minisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/minisync_api.h
         ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
         COPYONLY)
+
+### Library tests setup
+add_executable(minisyncpp_tests ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp)
+add_dependencies(minisyncpp_tests minisyncpp_static)
+target_link_libraries(minisyncpp_tests minisyncpp_static)
+set_target_properties(minisyncpp_tests
+        PROPERTIES
+        LINK_SEARCH_START_STATIC 1
+        LINK_SEARCH_END_STATIC 1
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib/static"
+        LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests"
+        OUTPUT_NAME minisyncpp)
 
 ### DEMO SETUP
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/demo/config.h)
@@ -89,6 +113,8 @@ ExternalProject_Add(
 )
 
 ExternalProject_Get_Property(protobuf-external source_dir)
+# add protobuf headers to includes
+include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/include)
 
 ExternalProject_Add(
         protoc
@@ -100,11 +126,6 @@ ExternalProject_Add(
         BUILD_ALWAYS 1
         BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/protoc/bin/protoc
 )
-
-include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/include)
-link_directories(lib lib/static
-        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static)
 
 # generate protobuf definitions
 set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protoc/bin/protoc)
@@ -132,7 +153,7 @@ set_target_properties(MiniSyncDemo
         LINK_SEARCH_START_STATIC 1
         LINK_SEARCH_END_STATIC 1
         VERSION "${MiniSyncDemo_VERSION_MAJOR}.${MiniSyncDemo_VERSION_MINOR}"
-        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
+        ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib/static"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
 
