@@ -66,8 +66,8 @@ namespace MiniSync
 
             struct
             {
-                long double value = 0;
-                long double error = 0;
+                long double value = 1.0;
+                long double error = 0.0;
             } currentDrift; // relative drift of the clock
 
             struct

@@ -9,7 +9,9 @@
 #include <algorithm>
 
 #ifdef LOGURU_ENABLE
+
 #include <loguru/loguru.hpp>
+
 #endif
 
 #include "minisync.h"
@@ -168,7 +170,10 @@ void MiniSync::Algorithms::Base::__recalculateEstimates()
     this->currentOffset.error = (current_high->getB() - current_low->getB()) / 2;
 
 #ifdef LOGURU_ENABLE
-    CHECK_GE_F(this->currentDrift.value, 0, "Drift must be >=0 for monotonically increasing clocks...");
+    CHECK_GE_F(this->currentDrift.value,
+               0,
+               "Drift must be >=0 for monotonically increasing clocks... (actual value: %Lf)",
+               this->currentDrift.value);
 #else
     if (this->currentDrift.value <= 0)
         throw std::runtime_error("Drift must be >=0 for monotonically increasing clocks...");
