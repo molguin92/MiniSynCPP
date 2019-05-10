@@ -6,14 +6,14 @@
 */
 
 #include <utility>
-#include "node.h"
-#include "config.h"
-#include "exception.h"
 #include <cstring>
 #include <unistd.h>
 #include <protocol.pb.h>
 #include <google/protobuf/message.h>
 #include <thread>
+#include <demo_config.h>
+#include "node.h"
+#include "exception.h"
 #include "loguru/loguru.hpp"
 //#include "algorithms/constraints.h"
 

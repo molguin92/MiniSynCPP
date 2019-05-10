@@ -6,12 +6,12 @@
 */
 
 #include <iostream>
+#include <memory>
+#include <demo_config.h>
 #include "CLI11/CLI11.hpp"
 #include "loguru/loguru.hpp"
 #include "node.h"
 #include "exception.h"
-#include <memory>
-#include "config.h"
 
 MiniSync::Node* node = nullptr;
 

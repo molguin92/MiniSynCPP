@@ -1,0 +1,16 @@
+/*
+* Author: Manuel Olguín Muñoz <manuel@olguin.se>
+*
+* Copyright© 2019 Manuel Olguín Muñoz
+* See LICENSE file included in the root directory of this project for licensing and copyright details.
+*/
+
+#ifndef MINISYNCPP_DEMO_CONFIG_H_IN
+#define MINISYNCPP_DEMO_CONFIG_H_IN
+
+#define APP_VERSION_MAJOR "@MINISYNCPP_DEMO_VERSION_MAJOR@"
+#define APP_VERSION_MINOR "@MINISYNCPP_DEMO_VERSION_MINOR@"
+#define PROTOCOL_VERSION_MAJOR @MINISYNCPP_PROTO_VERSION_MAJOR@
+#define PROTOCOL_VERSION_MINOR @MINISYNCPP_PROTO_VERSION_MINOR@
+
+#endif //MINISYNCPP_DEMO_CONFIG_H_IN

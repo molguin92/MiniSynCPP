@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(MiniSynCPP)
+project(MiniSynCPP CXX)
 set(CMAKE_CXX_STANDARD 11)
 include(ExternalProject REQUIRED)
 find_package(Threads REQUIRED)
@@ -18,25 +18,23 @@ link_directories(lib lib/static
 
 ### LIBRARY SETUP
 # library config
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/algorithms/config.h)
-file(READ src/algorithms/config.h CONFIG)
-string(REGEX MATCH "LIB_BUILD_VERSION ([0-9]*)" _ ${CONFIG})
-set(MiniSynCPP_BUILD_VERSION ${CMAKE_MATCH_1})
-string(REGEX MATCH "LIB_ABI_VERSION ([0-9]*)" _ ${CONFIG})
-set(MiniSynCPP_ABI_VERSION ${CMAKE_MATCH_1})
+set(LIBMINISYNCPP_BUILD_VERSION "1.0.1")
+set(LIBMINISYNCPP_ABI_VERSION "1")
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/lib_config.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h)
 
 ## add library for just the algorithm
 set(LIB_SRC
         include/loguru/loguru.cpp include/loguru/loguru.hpp
         src/algorithms/constraints.h src/algorithms/constraints.cpp
         src/algorithms/minisync.h src/algorithms/minisync.cpp
-        src/algorithms/minisync_api.h src/algorithms/minisync_api.cpp src/algorithms/config.h)
+        src/algorithms/minisync_api.h src/algorithms/minisync_api.cpp src/algorithms/lib_config.h.in)
 
 set(LIB_PROPERTIES
         LINK_SEARCH_START_STATIC 1
         LINK_SEARCH_END_STATIC 1
-        VERSION ${MiniSynCPP_BUILD_VERSION}
-        SOVERSION ${MiniSynCPP_ABI_VERSION}
+        VERSION ${LIBMINISYNCPP_BUILD_VERSION}
+        SOVERSION ${LIBMINISYNCPP_ABI_VERSION}
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib/static"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
@@ -76,14 +74,12 @@ else ()
 endif ()
 
 ### DEMO SETUP
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS src/demo/config.h)
-
-# read configs
-file(READ src/demo/config.h CONFIG)
-string(REGEX MATCH "APP_VERSION_MAJOR ([0-9]*)" _ ${CONFIG})
-set(MiniSyncDemo_VERSION_MAJOR ${CMAKE_MATCH_1})
-string(REGEX MATCH "APP_VERSION_MINOR ([0-9]*)" _ ${CONFIG})
-set(MiniSyncDemo_VERSION_MINOR ${CMAKE_MATCH_1})
+set(MINISYNCPP_DEMO_VERSION_MAJOR "0")
+set(MINISYNCPP_DEMO_VERSION_MINOR "5.2")
+set(MINISYNCPP_PROTO_VERSION_MAJOR 1)
+set(MINISYNCPP_PROTO_VERSION_MINOR 0)
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/demo/demo_config.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/include/demo_config.h)
 
 set(GITHUB_URL https://github.com/protocolbuffers/protobuf/releases/download)
 
@@ -143,7 +139,7 @@ add_custom_command(OUTPUT ${PROTO_SRC}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/demo/net)
 
 add_executable(MiniSyncDemo
-        src/demo/main.cpp src/demo/config.h
+        src/demo/main.cpp src/demo/demo_config.h.in
         src/demo/node.cpp src/demo/node.h
         src/demo/exception.cpp src/demo/exception.h
         ${PROTO_SRC}
@@ -158,7 +154,7 @@ set_target_properties(MiniSyncDemo
         PROPERTIES
         LINK_SEARCH_START_STATIC 1
         LINK_SEARCH_END_STATIC 1
-        VERSION "${MiniSyncDemo_VERSION_MAJOR}.${MiniSyncDemo_VERSION_MINOR}"
+        VERSION "${MINISYNCPP_DEMO_VERSION_MAJOR}.${MINISYNCPP_DEMO_VERSION_MINOR}"
         ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib/static"
         LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")

@@ -1,0 +1,14 @@
+/*
+* Author: Manuel Olguín Muñoz <manuel@olguin.se>
+*
+* Copyright© 2019 Manuel Olguín Muñoz
+* See LICENSE file included in the root directory of this project for licensing and copyright details.
+*/
+
+#ifndef MINISYNCPP_LIB_CONFIG_H_IN
+#define MINISYNCPP_LIB_CONFIG_H_IN
+
+#define LIB_BUILD_VERSION "@LIBMINISYNCPP_BUILD_VERSION@"
+#define LIB_ABI_VERSION "@LIBMINISYNCPP_ABI_VERSION@"
+
+#endif //MINISYNCPP_LIB_CONFIG_H_IN
