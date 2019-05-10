@@ -23,12 +23,19 @@ set(LIBMINISYNCPP_ABI_VERSION "1")
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/lib_config.h.in
         ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h)
 
+# copy the header to the binary directory
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/minisync_api.h
+        ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
+        COPYONLY)
+
 ## add library for just the algorithm
 set(LIB_SRC
+        ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h
+        ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
         include/loguru/loguru.cpp include/loguru/loguru.hpp
         src/algorithms/constraints.h src/algorithms/constraints.cpp
         src/algorithms/minisync.h src/algorithms/minisync.cpp
-        src/algorithms/minisync_api.h src/algorithms/minisync_api.cpp src/algorithms/lib_config.h.in)
+        src/algorithms/minisync_api.h src/algorithms/minisync_api.cpp)
 
 set(LIB_PROPERTIES
         LINK_SEARCH_START_STATIC 1
@@ -49,15 +56,12 @@ target_compile_definitions(minisyncpp_shared PUBLIC -DLOGURU_ENABLE)
 set_target_properties(minisyncpp_static PROPERTIES ${LIB_PROPERTIES})
 set_target_properties(minisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 
-# copy the header to the binary directory
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/minisync_api.h
-        ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
-        COPYONLY)
 
 ### Library tests setup
 if (DISABLE_TESTS)
 else ()
     add_executable(minisyncpp_tests
+            ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
             ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests_main.cpp)
     add_dependencies(minisyncpp_tests minisyncpp_static)
@@ -139,7 +143,9 @@ add_custom_command(OUTPUT ${PROTO_SRC}
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/demo/net)
 
 add_executable(MiniSyncDemo
-        src/demo/main.cpp src/demo/demo_config.h.in
+        ${CMAKE_CURRENT_BINARY_DIR}/include/demo_config.h
+        ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
+        src/demo/main.cpp
         src/demo/node.cpp src/demo/node.h
         src/demo/exception.cpp src/demo/exception.h
         ${PROTO_SRC}
