@@ -5,8 +5,13 @@ include(ExternalProject REQUIRED)
 find_package(Threads REQUIRED)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
-set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
-set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+
+if (UNIX)
+    # statically link everything on Linux
+    # on OS X we only statically link libminisyncpp and libprotobuf
+    set(CMAKE_FIND_LIBRARY_SUFFIXES ".a")
+    set(CMAKE_EXE_LINKER_FLAGS "-static-libgcc -static-libstdc++")
+endif ()
 
 # directories
 include_directories(include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/include)
