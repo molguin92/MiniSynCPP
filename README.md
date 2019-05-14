@@ -5,7 +5,17 @@ Reference implementation in C++11 of the MiniSync/TinySync time synchronization 
 Note that this implementation is still pretty naive and probably should not be used for anything critical (yet).
 
 ## Compilation
-The only requirements are:
+### Containerized
+The easiest way to compile the project is by invoking the `docker_build.sh` script, which sets up a complete, 
+configured 
+build environment inside a Docker container based on Ubuntu 18.04 and uses it to build:
+
+- Native x86_64 binaries and libraries for Linux.
+- Native ARMv7 binaries and libraries intended for the Raspberry Pi 2/3/3 A/B+.
+*The cross-compilers used for this can be found [here.](https://github.com/abhiTronix/raspberry-pi-cross-compilers)*
+
+### Native
+The requirements for native compilation are:
 
 - CMAKE
 - C++11 Compiler (gcc, g++, clang).
@@ -14,8 +24,9 @@ Compilation is then just a matter of running:
 ```bash
 $> mkdir ./cmake_build 
 $> cd ./cmake_build
-$> cmake ..
+$> cmake -DCMAKE_BUILD_TYPE=Release -UCMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES -UCMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES..
 $> cmake --build . --target all -- -j 4
+$> tests/minisyncpp # run some tests
 ```
 
 Note: Even though the project uses the Google Protobuf libraries, it is not necessary to have these installed when 
