@@ -19,6 +19,7 @@ mkdir -p ${LINUX_BUILD_DIR};\
 cd ${LINUX_BUILD_DIR};\
 cmake -DCMAKE_BUILD_TYPE=Release -UCMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES -UCMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES .. &&\
 cmake --build . --target all -- -j 4;\
+./tests/minisyncpp; \
 cd ..; chmod 0777 ${LINUX_BUILD_DIR};
 "
 
