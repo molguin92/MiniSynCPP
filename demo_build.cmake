@@ -1,4 +1,6 @@
 ### DEMO SETUP
+include(FetchContent REQUIRED)
+
 set(MINISYNCPP_DEMO_VERSION_MAJOR "0")
 set(MINISYNCPP_DEMO_VERSION_MINOR "5.2")
 set(MINISYNCPP_PROTO_VERSION_MAJOR 1)
@@ -6,49 +8,47 @@ set(MINISYNCPP_PROTO_VERSION_MINOR 0)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/demo/demo_config.h.in
         ${CMAKE_CURRENT_BINARY_DIR}/include/demo_config.h)
 
-set(GITHUB_URL https://github.com/protocolbuffers/protobuf)
+set(PROTOBUF_URL https://github.com/protocolbuffers/protobuf)
 set(PROTOBUF_VERSION "3.7.1")
 
 if (APPLE)
-    set(PROTOC_ARCHIVE "${GITHUB_URL}/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-osx-x86_64.zip")
+    set(PROTOC_ARCHIVE
+            "${PROTOBUF_URL}/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-osx-x86_64.zip")
 elseif (UNIX)
-    set(PROTOC_ARCHIVE "${GITHUB_URL}/releases/download//v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
+    set(PROTOC_ARCHIVE
+            "${PROTOBUF_URL}/releases/download//v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
 endif ()
 
-ExternalProject_Add(
-        protobuf-external
-        PREFIX protobuf
+# set options ahead of protobuf download
+set(protobuf_BUILD_TESTS OFF CACHE BOOL "Turn off Protobuf tests" FORCE)
+set(protobuf_BUILD_EXAMPLES OFF CACHE BOOL "Turn off Protobuf examples" FORCE)
+set(protobuf_WITH_ZLIB OFF CACHE BOOL "Turn off Protobuf with zlib" FORCE)
+set(protobuf_BUILD_SHARED_LIBS OFF CACHE BOOL "Force Protobuf static libs" FORCE)
+set(protobuf_BUILD_PROTOC_BINARIES OFF CACHE BOOL "Don't build Protoc" FORCE)
+
+FetchContent_Declare(
+        protobuf
         # download
-        GIT_REPOSITORY "${GITHUB_URL}.git"
+        GIT_REPOSITORY "${PROTOBUF_URL}.git"
         GIT_TAG "v${PROTOBUF_VERSION}"
         # ---
-        BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/protobuf
-        CMAKE_CACHE_ARGS
-        # "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"
-        "-DCMAKE_BUILD_TYPE:STRING=RELEASE"
-        "-Dprotobuf_BUILD_TESTS:BOOL=OFF"
-        "-Dprotobuf_BUILD_EXAMPLES:BOOL=OFF"
-        "-Dprotobuf_WITH_ZLIB:BOOL=OFF"
-        "-DCMAKE_CXX_COMPILER:STRING=${CMAKE_CXX_COMPILER}"
-        "-Dprotobuf_BUILD_SHARED_LIBS:BOOL=OFF"
-        "-DCMAKE_LIBRARY_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib"
-        "-DCMAKE_ARCHIVE_OUTPUT_DIRECTORY:STRING=${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static"
-        "-Dprotobuf_BUILD_PROTOC_BINARIES:BOOL=OFF"
-        # other project specific parameters
-        SOURCE_SUBDIR cmake
-        BUILD_ALWAYS 1
-        STEP_TARGETS build
-        INSTALL_COMMAND ""
 )
+FetchContent_GetProperties(protobuf)
+if (NOT protobuf_POPULATED)
+    FetchContent_Populate(protobuf)
+    add_subdirectory("${protobuf_SOURCE_DIR}/cmake")
+endif ()
 
-ExternalProject_Get_Property(protobuf-external source_dir)
 # add protobuf headers to includes
-include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/include)
+include_directories(include
+        ${protobuf_SOURCE_DIR}/src
+        ${CMAKE_CURRENT_BINARY_DIR}
+        ${CMAKE_CURRENT_BINARY_DIR}/include)
+
+
 link_directories(lib lib/static
         ${CMAKE_CURRENT_BINARY_DIR}/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/lib/static
-        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static)
+        ${CMAKE_CURRENT_BINARY_DIR}/lib/static)
 
 ExternalProject_Add(
         protoc
@@ -82,7 +82,7 @@ add_executable(MiniSyncDemo
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
         )
 
-add_dependencies(MiniSyncDemo protobuf-external protoc libminisyncpp_static)
+add_dependencies(MiniSyncDemo libprotobuf protoc libminisyncpp_static)
 
 set_target_properties(MiniSyncDemo
         PROPERTIES
@@ -95,6 +95,5 @@ set_target_properties(MiniSyncDemo
 
 target_link_libraries(MiniSyncDemo
         libminisyncpp_static # link against the algorithm
-        dl ${CMAKE_THREAD_LIBS_INIT}
-        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static/libprotobuf.a)
-# be very specific with the protobuf lib
+        libprotobuf # link against protobuf
+        dl ${CMAKE_THREAD_LIBS_INIT})
