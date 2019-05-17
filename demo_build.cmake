@@ -42,9 +42,27 @@ if (NOT protobuf_POPULATED)
     message(STATUS "Populating Protobuf sources: done")
 endif ()
 
-# add protobuf headers to includes
+# get CLI11
+set(CLI_TESTING OFF CACHE BOOL "Turn off CLI11 tests" FORCE)
+set(CLI_EXAMPLES OFF CACHE BOOL "Turn off CLI11 examples" FORCE)
+set(CLI11_URL https://github.com/CLIUtils/CLI11)
+set(CLI11_VERSION "1.7.1")
+FetchContent_Declare(
+        cli11
+        # download
+        GIT_REPOSITORY "${CLI11_URL}.git"
+        GIT_TAG "v${CLI11_VERSION}"
+        # ---
+)
+FetchContent_GetProperties(cli11)
+if (NOT cli11_POPULATED)
+    message(STATUS "Populating CLI11 sources...")
+    FetchContent_Populate(cli11)
+    add_subdirectory("${cli11_SOURCE_DIR}" "${cli11_BINARY_DIR}")
+    message(STATUS "Populating Protobuf sources: done")
+endif ()
+
 include_directories(include
-        ${protobuf_SOURCE_DIR}/src
         ${CMAKE_CURRENT_BINARY_DIR}
         ${CMAKE_CURRENT_BINARY_DIR}/include)
 
@@ -79,13 +97,12 @@ add_executable(MiniSyncDemo
         src/demo/main.cpp
         src/demo/node.cpp src/demo/node.h
         src/demo/exception.cpp src/demo/exception.h
-        ${PROTO_SRC}
         src/demo/stats.cpp src/demo/stats.h
-        include/CLI11/CLI11.hpp
+        ${PROTO_SRC}
         ${LOGURU_SRC} # loguru, credit to emilk@github
         )
 
-add_dependencies(MiniSyncDemo libprotobuf protoc libminisyncpp_static)
+add_dependencies(MiniSyncDemo libprotobuf protoc libminisyncpp_static CLI11)
 
 set_target_properties(MiniSyncDemo
         PROPERTIES
@@ -99,4 +116,5 @@ set_target_properties(MiniSyncDemo
 target_link_libraries(MiniSyncDemo
         libminisyncpp_static # link against the algorithm
         libprotobuf # link against protobuf
+        CLI11 # link against CLI11
         dl ${CMAKE_THREAD_LIBS_INIT})

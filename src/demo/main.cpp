@@ -9,7 +9,7 @@
 #include <memory>
 #include <demo_config.h>
 #include <loguru.hpp>
-#include "CLI11/CLI11.hpp"
+#include <CLI/CLI.hpp>
 #include "node.h"
 #include "exception.h"
 
