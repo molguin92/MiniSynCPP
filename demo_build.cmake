@@ -1,5 +1,6 @@
 ### DEMO SETUP
 include(FetchContent REQUIRED)
+include(ExternalProject REQUIRED)
 
 set(MINISYNCPP_DEMO_VERSION_MAJOR "0")
 set(MINISYNCPP_DEMO_VERSION_MINOR "5.2")
@@ -37,7 +38,7 @@ FetchContent_GetProperties(protobuf)
 if (NOT protobuf_POPULATED)
     message(STATUS "Populating Protobuf sources...")
     FetchContent_Populate(protobuf)
-    add_subdirectory("${protobuf_SOURCE_DIR}/cmake")
+    add_subdirectory("${protobuf_SOURCE_DIR}/cmake" "${protobuf_BINARY_DIR}/cmake")
     message(STATUS "Populating Protobuf sources: done")
 endif ()
 

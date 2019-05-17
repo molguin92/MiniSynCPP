@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.11)
 project(LibMiniSynCPP CXX)
 set(CMAKE_CXX_STANDARD 11)
-include(ExternalProject REQUIRED)
+include(FetchContent REQUIRED)
 find_package(Threads REQUIRED)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
@@ -73,12 +73,33 @@ set_target_properties(libminisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 
 ### Library tests setup
 if (LIBMINISYNCPP_BUILD_TESTS)
+    message(STATUS "Configuring tests...")
+
+    set(CATCH2_VERSION "2.7.2")
+    set(CATCH2_URL "https://github.com/catchorg/Catch2")
+
+    FetchContent_Declare(
+            catch2
+            # download
+            GIT_REPOSITORY "${CATCH2_URL}.git"
+            GIT_TAG "v${CATCH2_VERSION}"
+            # ---
+    )
+    FetchContent_GetProperties(catch2)
+    if (NOT catch2_POPULATED)
+        message(STATUS "Populating Catch2 sources...")
+        FetchContent_Populate(catch2)
+        add_subdirectory(${catch2_SOURCE_DIR} ${catch2_BINARY_DIR})
+        message(STATUS "Populating Catch2 sources: done")
+    endif ()
+
     add_executable(libminisyncpp_tests
             ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
             ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests_main.cpp)
-    add_dependencies(libminisyncpp_tests libminisyncpp_static)
-    target_link_libraries(libminisyncpp_tests libminisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
+
+    add_dependencies(libminisyncpp_tests libminisyncpp_static Catch2::Catch2)
+    target_link_libraries(libminisyncpp_tests libminisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT} Catch2::Catch2)
 
     set_target_properties(libminisyncpp_tests
             PROPERTIES
@@ -88,6 +109,8 @@ if (LIBMINISYNCPP_BUILD_TESTS)
             LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/lib"
             RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/tests"
             OUTPUT_NAME minisyncpp)
+
+    message(STATUS "Configuring tests: done")
 endif ()
 
 if (LIBMINISYNCPP_BUILD_DEMO)
