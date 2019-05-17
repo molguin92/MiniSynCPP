@@ -63,8 +63,7 @@ set_target_properties(minisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 
 
 ### Library tests setup
-if (DISABLE_TESTS)
-else ()
+if (LIBMINISYNCPP_BUILD_TESTS)
     add_executable(minisyncpp_tests
             ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
             ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp
