@@ -8,7 +8,7 @@
 #include <algorithm>
 #include <cstdlib>
 
-#ifdef LOGURU_ENABLE
+#ifdef LIBMINISYNCPP_LOGURU_ENABLE
 #include <loguru/loguru.hpp>
 #endif
 
@@ -22,7 +22,7 @@ bool MiniSync::Point::operator==(const Point& o) const
 
 MiniSync::ConstraintLine::ConstraintLine(const LowPoint& p1, const HighPoint& p2) : B({})
 {
-#ifdef LOGURU_ENABLE
+#ifdef LIBMINISYNCPP_LOGURU_ENABLE
     CHECK_NE_F(p1.getX(), p2.getX(), "Points in a constraint line cannot have the same REF timestamp!");
 #else
     if (p1.getX() == p2.getX())

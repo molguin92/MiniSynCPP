@@ -8,7 +8,7 @@
 #include <cstdlib>
 #include <algorithm>
 
-#ifdef LOGURU_ENABLE
+#ifdef LIBMINISYNCPP_LOGURU_ENABLE
 
 #include <loguru/loguru.hpp>
 
@@ -154,7 +154,7 @@ void MiniSync::Algorithms::Base::__recalculateEstimates()
 
     this->cleanup();
 
-#ifdef LOGURU_ENABLE
+#ifdef LIBMINISYNCPP_LOGURU_ENABLE
     CHECK_NE_F(current_low.get(), nullptr, "current_low is null!");
     CHECK_NE_F(current_high.get(), nullptr, "current_high is null!");
 #else
@@ -169,7 +169,7 @@ void MiniSync::Algorithms::Base::__recalculateEstimates()
     this->currentDrift.error = (current_low->getA() - current_high->getA()) / 2;
     this->currentOffset.error = (current_high->getB() - current_low->getB()) / 2;
 
-#ifdef LOGURU_ENABLE
+#ifdef LIBMINISYNCPP_LOGURU_ENABLE
     CHECK_GE_F(this->currentDrift.value,
                0,
                "Drift must be >=0 for monotonically increasing clocks... (actual value: %Lf)",

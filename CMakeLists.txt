@@ -63,8 +63,8 @@ target_link_libraries(minisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(minisyncpp_shared dl ${CMAKE_THREAD_LIBS_INIT})
 
 if (LIBMINISYNCPP_ENABLE_LOGURU)
-    target_compile_definitions(minisyncpp_static PUBLIC -DLOGURU_ENABLE)
-    target_compile_definitions(minisyncpp_shared PUBLIC -DLOGURU_ENABLE)
+    target_compile_definitions(minisyncpp_static PUBLIC -DLIBMINISYNCPP_LOGURU_ENABLE)
+    target_compile_definitions(minisyncpp_shared PUBLIC -DLIBMINISYNCPP_LOGURU_ENABLE)
 endif ()
 
 set_target_properties(minisyncpp_static PROPERTIES ${LIB_PROPERTIES})
