@@ -8,8 +8,8 @@
 #include <iostream>
 #include <memory>
 #include <demo_config.h>
+#include <loguru.hpp>
 #include "CLI11/CLI11.hpp"
-#include "loguru/loguru.hpp"
 #include "node.h"
 #include "exception.h"
 

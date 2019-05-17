@@ -10,7 +10,7 @@
 #include <minisync_api.h>
 //#include "algorithms/constraints.h"
 #include <fstream>
-#include <loguru/loguru.hpp>
+#include <loguru.hpp>
 
 void MiniSync::Stats::SyncStats::add_sample(long double offset,
                                             long double offset_error,

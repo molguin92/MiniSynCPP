@@ -9,7 +9,8 @@
 #include <cstdlib>
 
 #ifdef LIBMINISYNCPP_LOGURU_ENABLE
-#include <loguru/loguru.hpp>
+
+#include <loguru.hpp>
 #endif
 
 #include "constraints.h"

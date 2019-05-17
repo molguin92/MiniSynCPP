@@ -2,9 +2,11 @@ cmake_minimum_required(VERSION 3.11)
 project(LibMiniSynCPP CXX)
 set(CMAKE_CXX_STANDARD 11)
 include(FetchContent REQUIRED)
-find_package(Threads REQUIRED)
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+
+# demo requires loguru
+if (LIBMINISYNCPP_BUILD_DEMO)
+    set(LIBMINISYNCPP_ENABLE_LOGURU TRUE)
+endif ()
 
 if (UNIX)
     # statically link everything on Linux
@@ -16,6 +18,28 @@ endif ()
 # directories
 include_directories(include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/include)
 link_directories(lib lib/static)
+
+# dinamically fetch Loguru if required
+if (LIBMINISYNCPP_ENABLE_LOGURU)
+    set(LOGURU_VERSION "2.0.0")
+    set(LOGURU_URL "https://github.com/emilk/loguru")
+
+    FetchContent_Declare(
+            loguru
+            # download
+            GIT_REPOSITORY "${LOGURU_URL}.git"
+            GIT_TAG "v${LOGURU_VERSION}"
+            # ---
+    )
+    FetchContent_GetProperties(loguru)
+    if (NOT loguru_POPULATED)
+        message(STATUS "Populating Loguru sources...")
+        FetchContent_Populate(loguru)
+        include_directories(${loguru_SOURCE_DIR})
+        set(LOGURU_SRC ${loguru_SOURCE_DIR}/loguru.hpp ${loguru_SOURCE_DIR}/loguru.cpp)
+        message(STATUS "Populating Loguru sources: done")
+    endif ()
+endif ()
 
 ### LIBRARY SETUP
 # library config
@@ -30,21 +54,15 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/libminisyncpp/minisync_api.h
         COPYONLY)
 
 ## add library for just the algorithm
+list(APPEND LIB_SRC
+        ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h
+        ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
+        src/libminisyncpp/constraints.h src/libminisyncpp/constraints.cpp
+        src/libminisyncpp/minisync.h src/libminisyncpp/minisync.cpp
+        src/libminisyncpp/minisync_api.h src/libminisyncpp/minisync_api.cpp)
+
 if (LIBMINISYNCPP_ENABLE_LOGURU)
-    set(LIB_SRC
-            ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h
-            ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
-            include/loguru/loguru.cpp include/loguru/loguru.hpp
-            src/libminisyncpp/constraints.h src/libminisyncpp/constraints.cpp
-            src/libminisyncpp/minisync.h src/libminisyncpp/minisync.cpp
-            src/libminisyncpp/minisync_api.h src/libminisyncpp/minisync_api.cpp)
-else ()
-    set(LIB_SRC
-            ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h
-            ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
-            src/libminisyncpp/constraints.h src/libminisyncpp/constraints.cpp
-            src/libminisyncpp/minisync.h src/libminisyncpp/minisync.cpp
-            src/libminisyncpp/minisync_api.h src/libminisyncpp/minisync_api.cpp)
+    list(APPEND LIB_SRC ${LOGURU_SRC})
 endif ()
 
 set(LIB_PROPERTIES
@@ -59,10 +77,13 @@ set(LIB_PROPERTIES
 
 add_library(libminisyncpp_static STATIC ${LIB_SRC})
 add_library(libminisyncpp_shared SHARED ${LIB_SRC})
-target_link_libraries(libminisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(libminisyncpp_shared dl ${CMAKE_THREAD_LIBS_INIT})
 
 if (LIBMINISYNCPP_ENABLE_LOGURU)
+    find_package(Threads REQUIRED)
+    set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+    set(THREADS_PREFER_PTHREAD_FLAG TRUE)
+    target_link_libraries(libminisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
+    target_link_libraries(libminisyncpp_shared dl ${CMAKE_THREAD_LIBS_INIT})
     target_compile_definitions(libminisyncpp_static PUBLIC -DLIBMINISYNCPP_LOGURU_ENABLE)
     target_compile_definitions(libminisyncpp_shared PUBLIC -DLIBMINISYNCPP_LOGURU_ENABLE)
 endif ()

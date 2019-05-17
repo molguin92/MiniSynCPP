@@ -82,7 +82,7 @@ add_executable(MiniSyncDemo
         ${PROTO_SRC}
         src/demo/stats.cpp src/demo/stats.h
         include/CLI11/CLI11.hpp
-        include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
+        ${LOGURU_SRC} # loguru, credit to emilk@github
         )
 
 add_dependencies(MiniSyncDemo libprotobuf protoc libminisyncpp_static)

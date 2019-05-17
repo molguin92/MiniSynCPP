@@ -11,10 +11,10 @@
 #include <protocol.pb.h>
 #include <google/protobuf/message.h>
 #include <thread>
+#include <loguru.hpp>
 #include <demo_config.h>
 #include "node.h"
 #include "exception.h"
-#include "loguru/loguru.hpp"
 //#include "algorithms/constraints.h"
 
 #ifdef __x86_64__
