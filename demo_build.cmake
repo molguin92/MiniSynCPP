@@ -42,6 +42,11 @@ ExternalProject_Add(
 ExternalProject_Get_Property(protobuf-external source_dir)
 # add protobuf headers to includes
 include_directories(include ${source_dir}/src ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/include)
+link_directories(lib lib/static
+        ${CMAKE_CURRENT_BINARY_DIR}/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/lib/static
+        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib
+        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static)
 
 ExternalProject_Add(
         protoc

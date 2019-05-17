@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.10)
-project(MiniSynCPP CXX)
+project(LibMiniSynCPP CXX)
 set(CMAKE_CXX_STANDARD 11)
 include(ExternalProject REQUIRED)
 find_package(Threads REQUIRED)
@@ -15,11 +15,7 @@ endif ()
 
 # directories
 include_directories(include ${CMAKE_CURRENT_BINARY_DIR} ${CMAKE_CURRENT_BINARY_DIR}/include)
-link_directories(lib lib/static
-        ${CMAKE_CURRENT_BINARY_DIR}/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/lib/static
-        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib
-        ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static)
+link_directories(lib lib/static)
 
 ### LIBRARY SETUP
 # library config
