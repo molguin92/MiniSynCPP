@@ -6,20 +6,22 @@ set(MINISYNCPP_PROTO_VERSION_MINOR 0)
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/demo/demo_config.h.in
         ${CMAKE_CURRENT_BINARY_DIR}/include/demo_config.h)
 
-set(GITHUB_URL https://github.com/protocolbuffers/protobuf/releases/download)
-
+set(GITHUB_URL https://github.com/protocolbuffers/protobuf)
 set(PROTOBUF_VERSION "3.7.1")
-set(PROTOBUF_TAR_GZ "${GITHUB_URL}/v${PROTOBUF_VERSION}/protobuf-cpp-${PROTOBUF_VERSION}.tar.gz")
+
 if (APPLE)
-    set(PROTOC_ARCHIVE "${GITHUB_URL}/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-osx-x86_64.zip")
+    set(PROTOC_ARCHIVE "${GITHUB_URL}/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-osx-x86_64.zip")
 elseif (UNIX)
-    set(PROTOC_ARCHIVE "${GITHUB_URL}/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
+    set(PROTOC_ARCHIVE "${GITHUB_URL}/releases/download//v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
 endif ()
 
 ExternalProject_Add(
         protobuf-external
         PREFIX protobuf
-        URL ${PROTOBUF_TAR_GZ}
+        # download
+        GIT_REPOSITORY "${GITHUB_URL}.git"
+        GIT_TAG "v${PROTOBUF_VERSION}"
+        # ---
         BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/protobuf
         CMAKE_CACHE_ARGS
         # "-DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}"

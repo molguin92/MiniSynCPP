@@ -4,7 +4,7 @@ LABEL maintainer="Manuel Olguín <molguin@kth.se>"
 # install requirements
 RUN apt-get update
 RUN apt-get upgrade -y
-RUN apt-get install -y wget build-essential cmake gcc g++ clang
+RUN apt-get install -y wget build-essential cmake gcc g++ clang git
 
 # get the Raspberry Pi cross-compilers
 RUN wget 'https://sourceforge.net/projects/raspberry-pi-cross-compilers/files/Raspberry%20Pi%20GCC%20Cross-Compilers/\
