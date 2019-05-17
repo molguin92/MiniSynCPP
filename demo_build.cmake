@@ -80,7 +80,7 @@ add_executable(MiniSyncDemo
         include/loguru/loguru.cpp include/loguru/loguru.hpp # loguru, credit to emilk@github
         )
 
-add_dependencies(MiniSyncDemo protobuf-external protoc minisyncpp_static)
+add_dependencies(MiniSyncDemo protobuf-external protoc libminisyncpp_static)
 
 set_target_properties(MiniSyncDemo
         PROPERTIES
@@ -92,7 +92,7 @@ set_target_properties(MiniSyncDemo
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin")
 
 target_link_libraries(MiniSyncDemo
-        minisyncpp_static # link against the algorithm
+        libminisyncpp_static # link against the algorithm
         dl ${CMAKE_THREAD_LIBS_INIT}
         ${CMAKE_CURRENT_BINARY_DIR}/protobuf/lib/static/libprotobuf.a)
 # be very specific with the protobuf lib

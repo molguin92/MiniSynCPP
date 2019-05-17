@@ -57,30 +57,30 @@ set(LIB_PROPERTIES
         RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/bin"
         OUTPUT_NAME minisyncpp)
 
-add_library(minisyncpp_static STATIC ${LIB_SRC})
-add_library(minisyncpp_shared SHARED ${LIB_SRC})
-target_link_libraries(minisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(minisyncpp_shared dl ${CMAKE_THREAD_LIBS_INIT})
+add_library(libminisyncpp_static STATIC ${LIB_SRC})
+add_library(libminisyncpp_shared SHARED ${LIB_SRC})
+target_link_libraries(libminisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(libminisyncpp_shared dl ${CMAKE_THREAD_LIBS_INIT})
 
 if (LIBMINISYNCPP_ENABLE_LOGURU)
-    target_compile_definitions(minisyncpp_static PUBLIC -DLIBMINISYNCPP_LOGURU_ENABLE)
-    target_compile_definitions(minisyncpp_shared PUBLIC -DLIBMINISYNCPP_LOGURU_ENABLE)
+    target_compile_definitions(libminisyncpp_static PUBLIC -DLIBMINISYNCPP_LOGURU_ENABLE)
+    target_compile_definitions(libminisyncpp_shared PUBLIC -DLIBMINISYNCPP_LOGURU_ENABLE)
 endif ()
 
-set_target_properties(minisyncpp_static PROPERTIES ${LIB_PROPERTIES})
-set_target_properties(minisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
+set_target_properties(libminisyncpp_static PROPERTIES ${LIB_PROPERTIES})
+set_target_properties(libminisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 
 
 ### Library tests setup
 if (LIBMINISYNCPP_BUILD_TESTS)
-    add_executable(minisyncpp_tests
+    add_executable(libminisyncpp_tests
             ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
             ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests.cpp
             ${CMAKE_CURRENT_SOURCE_DIR}/src/tests/tests_main.cpp)
-    add_dependencies(minisyncpp_tests minisyncpp_static)
-    target_link_libraries(minisyncpp_tests minisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
+    add_dependencies(libminisyncpp_tests libminisyncpp_static)
+    target_link_libraries(libminisyncpp_tests libminisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
 
-    set_target_properties(minisyncpp_tests
+    set_target_properties(libminisyncpp_tests
             PROPERTIES
             LINK_SEARCH_START_STATIC 1
             LINK_SEARCH_END_STATIC 1
