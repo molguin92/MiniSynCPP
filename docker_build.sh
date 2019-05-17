@@ -32,6 +32,7 @@ cd /mnt/build;\
 mkdir -p ${LINUX_BUILD_DIR};\
 cd ${LINUX_BUILD_DIR};\
 cmake ${COMMON_CMAKE_FLAGS} .. &&\
+cmake --build . --target clean -- -j 4;\
 cmake --build . --target all -- -j 4;\
 ./tests/minisyncpp;\
 cd ..; chmod 0777 ${LINUX_BUILD_DIR};\
@@ -41,6 +42,7 @@ cmake -DCMAKE_C_COMPILER=/opt/cross-pi-gcc-8.3.0-2/bin/arm-linux-gnueabihf-gcc \
 -DCMAKE_CXX_COMPILER=/opt/cross-pi-gcc-8.3.0-2/bin/arm-linux-gnueabihf-g++ \
 -DCMAKE_CXX_FLAGS='-march=armv7-a -mfloat-abi=hard -mfpu=neon-vfpv4' \
 ${COMMON_CMAKE_FLAGS} .. &&\
+cmake --build . --target clean -- -j 4;\
 cmake --build . --target all -- -j 4;\
 cd ..; chmod 0777 ${RASPI_BUILD_DIR};\
 "
