@@ -30,13 +30,22 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/libminisyncpp/minisync_api.h
         COPYONLY)
 
 ## add library for just the algorithm
-set(LIB_SRC
-        ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h
-        ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
-        include/loguru/loguru.cpp include/loguru/loguru.hpp
-        src/libminisyncpp/constraints.h src/libminisyncpp/constraints.cpp
-        src/libminisyncpp/minisync.h src/libminisyncpp/minisync.cpp
-        src/libminisyncpp/minisync_api.h src/libminisyncpp/minisync_api.cpp)
+if (LIBMINISYNCPP_ENABLE_LOGURU)
+    set(LIB_SRC
+            ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h
+            ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
+            include/loguru/loguru.cpp include/loguru/loguru.hpp
+            src/libminisyncpp/constraints.h src/libminisyncpp/constraints.cpp
+            src/libminisyncpp/minisync.h src/libminisyncpp/minisync.cpp
+            src/libminisyncpp/minisync_api.h src/libminisyncpp/minisync_api.cpp)
+else ()
+    set(LIB_SRC
+            ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h
+            ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
+            src/libminisyncpp/constraints.h src/libminisyncpp/constraints.cpp
+            src/libminisyncpp/minisync.h src/libminisyncpp/minisync.cpp
+            src/libminisyncpp/minisync_api.h src/libminisyncpp/minisync_api.cpp)
+endif ()
 
 set(LIB_PROPERTIES
         LINK_SEARCH_START_STATIC 1
@@ -52,8 +61,12 @@ add_library(minisyncpp_static STATIC ${LIB_SRC})
 add_library(minisyncpp_shared SHARED ${LIB_SRC})
 target_link_libraries(minisyncpp_static dl ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(minisyncpp_shared dl ${CMAKE_THREAD_LIBS_INIT})
-target_compile_definitions(minisyncpp_static PUBLIC -DLOGURU_ENABLE)
-target_compile_definitions(minisyncpp_shared PUBLIC -DLOGURU_ENABLE)
+
+if (LIBMINISYNCPP_ENABLE_LOGURU)
+    target_compile_definitions(minisyncpp_static PUBLIC -DLOGURU_ENABLE)
+    target_compile_definitions(minisyncpp_shared PUBLIC -DLOGURU_ENABLE)
+endif ()
+
 set_target_properties(minisyncpp_static PROPERTIES ${LIB_PROPERTIES})
 set_target_properties(minisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 
