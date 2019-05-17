@@ -35,8 +35,10 @@ FetchContent_Declare(
 )
 FetchContent_GetProperties(protobuf)
 if (NOT protobuf_POPULATED)
+    message(STATUS "Populating Protobuf sources...")
     FetchContent_Populate(protobuf)
     add_subdirectory("${protobuf_SOURCE_DIR}/cmake")
+    message(STATUS "Populating Protobuf sources: done")
 endif ()
 
 # add protobuf headers to includes
