@@ -25,11 +25,11 @@ link_directories(lib lib/static
 # library config
 set(LIBMINISYNCPP_BUILD_VERSION "1.0.1")
 set(LIBMINISYNCPP_ABI_VERSION "1")
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/lib_config.h.in
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/libminisyncpp/lib_config.h.in
         ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h)
 
 # copy the header to the binary directory
-configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/algorithms/minisync_api.h
+configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/libminisyncpp/minisync_api.h
         ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
         COPYONLY)
 
@@ -38,9 +38,9 @@ set(LIB_SRC
         ${CMAKE_CURRENT_BINARY_DIR}/include/lib_config.h
         ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
         include/loguru/loguru.cpp include/loguru/loguru.hpp
-        src/algorithms/constraints.h src/algorithms/constraints.cpp
-        src/algorithms/minisync.h src/algorithms/minisync.cpp
-        src/algorithms/minisync_api.h src/algorithms/minisync_api.cpp)
+        src/libminisyncpp/constraints.h src/libminisyncpp/constraints.cpp
+        src/libminisyncpp/minisync.h src/libminisyncpp/minisync.cpp
+        src/libminisyncpp/minisync_api.h src/libminisyncpp/minisync_api.cpp)
 
 set(LIB_PROPERTIES
         LINK_SEARCH_START_STATIC 1
