@@ -9,7 +9,7 @@ dist: xenial
 before_install:
   - mkdir ./cmake_build
   - cd ./cmake_build
-  - cmake -DCMAKE_BUILD_TYPE:STRING=DEBUG ..
+  - cmake -DCMAKE_BUILD_TYPE=DEBUG -DLIBMINISYNCPP_BUILD_TESTS=TRUE -DLIBMINISYNCPP_BUILD_DEMO=TRUE ..
 
 script:
   - cmake --build . --target all -- -j 4
