@@ -1,6 +1,5 @@
 ### DEMO SETUP
 include(FetchContent REQUIRED)
-include(ExternalProject REQUIRED)
 
 set(MINISYNCPP_DEMO_VERSION_MAJOR "0")
 set(MINISYNCPP_DEMO_VERSION_MINOR "5.2")
@@ -15,9 +14,11 @@ set(PROTOBUF_VERSION "3.7.1")
 if (APPLE)
     set(PROTOC_ARCHIVE
             "${PROTOBUF_URL}/releases/download/v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-osx-x86_64.zip")
+    set(PROTOC_MD5 "2e211695af8062f7f02dfcfa499fc0a7")
 elseif (UNIX)
     set(PROTOC_ARCHIVE
             "${PROTOBUF_URL}/releases/download//v${PROTOBUF_VERSION}/protoc-${PROTOBUF_VERSION}-linux-x86_64.zip")
+    set(PROTOC_MD5 "8927139bc77e63c32ea017cbea891f46")
 endif ()
 
 # set options ahead of protobuf download
@@ -71,24 +72,26 @@ link_directories(lib lib/static
         ${CMAKE_CURRENT_BINARY_DIR}/lib
         ${CMAKE_CURRENT_BINARY_DIR}/lib/static)
 
-ExternalProject_Add(
+FetchContent_Declare(
         protoc
         URL ${PROTOC_ARCHIVE}
-        SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/protoc
-        CONFIGURE_COMMAND ""
-        BUILD_COMMAND ""
-        INSTALL_COMMAND ""
-        BUILD_ALWAYS 1
-        BUILD_BYPRODUCTS ${CMAKE_CURRENT_BINARY_DIR}/protoc/bin/protoc
+        URL_MD5 ${PROTOC_MD5}
 )
+FetchContent_GetProperties(protoc)
+if (NOT protoc_POPULATED)
+    message(STATUS "Fetching Protobuf Compiler...")
+    FetchContent_Populate(protoc)
+    set(PROTOC_PATH ${protoc_SOURCE_DIR}/bin/protoc)
+    message(STATUS "Fetching Protobuf Compiler: Done")
+endif ()
+
 
 # generate protobuf definitions
-set(PROTOC_PATH ${CMAKE_CURRENT_BINARY_DIR}/protoc/bin/protoc)
 set(PROTO_SRC ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.cc ${CMAKE_CURRENT_BINARY_DIR}/protocol.pb.h)
 add_custom_command(OUTPUT ${PROTO_SRC}
         COMMAND ${PROTOC_PATH} protocol.proto --cpp_out=${CMAKE_CURRENT_BINARY_DIR}
         MAIN_DEPENDENCY ${CMAKE_CURRENT_SOURCE_DIR}/src/demo/net/protocol.proto
-        DEPENDS protoc
+        COMMENT "Generating Protobuf definitions..."
         WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/src/demo/net)
 
 add_executable(MiniSyncDemo
@@ -102,7 +105,7 @@ add_executable(MiniSyncDemo
         ${LOGURU_SRC} # loguru, credit to emilk@github
         )
 
-add_dependencies(MiniSyncDemo libprotobuf protoc libminisyncpp_static CLI11)
+add_dependencies(MiniSyncDemo libprotobuf libminisyncpp_static CLI11)
 
 set_target_properties(MiniSyncDemo
         PROPERTIES
