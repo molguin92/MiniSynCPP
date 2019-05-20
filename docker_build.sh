@@ -2,7 +2,7 @@
 
 printf "Building libminisyncpp in a Docker container...\n"
 
-DOCKER_IMG="minisync_build:latest"
+DOCKER_IMG="minisync_build:v2.0"
 
 printf "Checking if build image exists in registry: "
 if [[ "$(docker images -q ${DOCKER_IMG} 2> /dev/null)" == "" ]]; then
