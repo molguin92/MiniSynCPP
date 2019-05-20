@@ -3,6 +3,9 @@ project(LibMiniSynCPP CXX)
 set(CMAKE_CXX_STANDARD 11)
 include(FetchContent REQUIRED)
 
+# show fetchcontent progress
+set(FETCHCONTENT_QUIET OFF CACHE BOOL "Turn off FetchContent verbose output." FORCE)
+
 # demo requires loguru
 if (LIBMINISYNCPP_BUILD_DEMO)
     set(LIBMINISYNCPP_ENABLE_LOGURU TRUE)
