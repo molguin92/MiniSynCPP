@@ -46,9 +46,14 @@ endif ()
 
 ### Set up reqs for Python bindings
 if (LIBMINISYNCPP_WITH_PYTHON)
-    message(Configuring requirements for Python bindings...)
+    message(STATUS "Configuring requirements for Python bindings...")
+
     set(PYBIND11_VERSION "2.2.4")
     set(PYBIND11_URL "https://github.com/pybind/pybind11")
+    set(PYBIND11_CPP_STANDARD -std=c++11)
+    set(PYBIND11_PYTHON_VERSION 3.7)
+
+    FIND_PACKAGE(PythonLibs ${PYBIND11_PYTHON_VERSION} REQUIRED)
 
     FetchContent_Declare(
             pybind11
@@ -61,10 +66,11 @@ if (LIBMINISYNCPP_WITH_PYTHON)
     if (NOT pybind11_POPULATED)
         message(STATUS "Populating PyBind11 sources...")
         FetchContent_Populate(pybind11)
+        include_directories(${PYTHON_INCLUDE_DIRS} ${pybind11_SOURCE_DIR}/include)
         add_subdirectory(${pybind11_SOURCE_DIR})
-        message(STATUS "Populating Loguru sources: done")
+        message(STATUS "Populating PyBind11 sources: done")
     endif ()
-    message(Configuring requirements for Python bindings: done)
+    message(STATUS "Configuring requirements for Python bindings: done")
 endif ()
 
 ### LIBRARY SETUP
@@ -119,9 +125,19 @@ set_target_properties(libminisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 
 ### build Python bindings
 if (LIBMINISYNCPP_WITH_PYTHON)
-    pybind11_add_module(pyminisyncpp MODULE ${LIB_SRC})
-    set_target_properties(pyminisyncpp PROPERTIES ${LIB_PROPERTIES})
-    set_target_properties(pyminisyncpp PROPERTIES OUTPUT_NAME pyminisyncpp)
+    pybind11_add_module(pyminisyncpp
+            MODULE
+            ${CMAKE_CURRENT_SOURCE_DIR}/src/libminisyncpp/pyminisyncpp_gen.cpp
+            ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h)
+    set_target_properties(pyminisyncpp PROPERTIES
+            # LINK_SEARCH_START_STATIC 1
+            # LINK_SEARCH_END_STATIC 1
+            VERSION ${LIBMINISYNCPP_BUILD_VERSION}
+            SOVERSION ${LIBMINISYNCPP_ABI_VERSION}
+            ARCHIVE_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/python"
+            LIBRARY_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/python"
+            RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/python")
+    target_link_libraries(pyminisyncpp PRIVATE libminisyncpp_shared)
 endif ()
 
 ### Library tests setup
