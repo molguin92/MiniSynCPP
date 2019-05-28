@@ -44,6 +44,29 @@ if (LIBMINISYNCPP_ENABLE_LOGURU)
     endif ()
 endif ()
 
+### Set up reqs for Python bindings
+if (LIBMINISYNCPP_WITH_PYTHON)
+    message(Configuring requirements for Python bindings...)
+    set(PYBIND11_VERSION "2.2.4")
+    set(PYBIND11_URL "https://github.com/pybind/pybind11")
+
+    FetchContent_Declare(
+            pybind11
+            # download
+            GIT_REPOSITORY "${PYBIND11_URL}.git"
+            GIT_TAG "v${PYBIND11_VERSION}"
+            # ---
+    )
+    FetchContent_GetProperties(pybind11)
+    if (NOT pybind11_POPULATED)
+        message(STATUS "Populating PyBind11 sources...")
+        FetchContent_Populate(pybind11)
+        add_subdirectory(${pybind11_SOURCE_DIR})
+        message(STATUS "Populating Loguru sources: done")
+    endif ()
+    message(Configuring requirements for Python bindings: done)
+endif ()
+
 ### LIBRARY SETUP
 # library config
 set(LIBMINISYNCPP_BUILD_VERSION "1.0.1")
@@ -94,6 +117,12 @@ endif ()
 set_target_properties(libminisyncpp_static PROPERTIES ${LIB_PROPERTIES})
 set_target_properties(libminisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 
+### build Python bindings
+if (LIBMINISYNCPP_WITH_PYTHON)
+    pybind11_add_module(pyminisyncpp MODULE ${LIB_SRC})
+    set_target_properties(pyminisyncpp PROPERTIES ${LIB_PROPERTIES})
+    set_target_properties(pyminisyncpp PROPERTIES OUTPUT_NAME pyminisyncpp)
+endif ()
 
 ### Library tests setup
 if (LIBMINISYNCPP_BUILD_TESTS)
