@@ -128,7 +128,7 @@ endif ()
 if (LIBMINISYNCPP_BUILD_TESTS)
     message(STATUS "Configuring tests...")
 
-    set(CATCH2_VERSION "2.7.2")
+    set(CATCH2_VERSION "2.8.0")
     set(CATCH2_URL "https://github.com/catchorg/Catch2")
 
     FetchContent_Declare(
