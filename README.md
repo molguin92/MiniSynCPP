@@ -24,10 +24,19 @@ Compilation is then just a matter of running:
 ```bash
 $> mkdir ./cmake_build 
 $> cd ./cmake_build
-$> cmake -DCMAKE_BUILD_TYPE=Release -UCMAKE_C_IMPLICIT_INCLUDE_DIRECTORIES -UCMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES..
+$> cmake -DCMAKE_BUILD_TYPE=Release .. # (*)
 $> cmake --build . --target all -- -j 4
 $> tests/minisyncpp # run some tests
 ```
+
+(*) The CMAKE configure command accepts the following option flags:
+
+- `-DCMAKE_BUILD_TYPE={Debug/Release}`: Specifies the build type. Debug builds include additional debugging output.
+- `-DLIBMINISYNCPP_BUILD_DEMO={TRUE/FALSE}`: Whether to build an additional demo program to showcase the workings of 
+the library.
+- `-DLIBMINISYNCPP_BUILD_TESTS={TRUE/FALSE}`: Build unittests.
+- `-DLIBMINISYNCPP_ENABLE_LOGURU={TRUE/FALSE}`: For library-only builds, whether to build with Loguru logging support.
+- `-DLIBMINISYNCPP_WITH_PYTHON={TRUE/FALSE}`: Build Python 3.7+ library.
 
 Note: Even though the project uses the Google Protobuf libraries, it is not necessary to have these installed when 
 compiling, as the build chain will download its own copy anyway to statically link them. This is mainly done for 
@@ -35,7 +44,53 @@ portability and cross-compilation purposes.
 
 ## Usage
 
-The program includes a help message accessible through the ```-h, --help``` flags.
+### Library
+
+By default the CMAKE toolchain builds static and shared copies of the library, using the CMAKE targets 
+`libminisyncpp_static` and `libminisyncpp_static`. These can be used by compiling your program with the interface 
+header `minisync_api.h` and linking it with the library.
+
+The easiest way of achieving this is by including the libraries as a CMAKE subproject (e.g. through `FetchContent` 
+paired with `add_subdirectory`):
+
+```cmake
+include(FetchContent REQUIRED)
+### Set some CMAKE flags
+set(LIBMINISYNCPP_ENABLE_LOGURU TRUE CACHE BOOL "" FORCE) # use loguru
+set(LIBMINISYNCPP_WITH_PYTHON TRUE CACHE BOOL "" FORCE) # build python library
+### Fetch libminisyncpp
+FetchContent_Declare(
+            minisyncpp
+            # download
+            GIT_REPOSITORY "https://github.com/molguin92/MiniSynCPP.git"
+            GIT_TAG "master" # or a specific release tag
+            # ---
+            )
+FetchContent_GetProperties(minisyncpp)
+if (NOT minisyncpp_POPULATED)
+    FetchContent_Populate(minisyncpp)
+    add_subdirectory(${minisyncpp_SOURCE_DIR})
+    
+    ### The project exports two variables for easy use:
+    # LIBMINISYNCPP_HDR: the full path to the api header file minisyncp_api.h
+    # LIBMINISYNCPP_INCLUDE: the full path to the library include directory
+    
+    include_directories(${LIBMINISYNCPP_INCLUDE})
+endif ()
+
+# ...
+
+add_executable(myexe foo.cpp bar.hpp ${LIBMINISYNCPP_HDR})
+add_dependencies(myexe libminisyncpp_static)
+target_link_libraries(myexe libminisyncpp_static)
+
+```
+
+For details on the API, see the pretty self-explanatory [minisync_api.h](src/libminisyncpp/minisync_api.h).
+
+### Demo Program
+
+The demo program includes a help message accessible through the ```-h, --help``` flags.
 
 ```bash
 $> MiniSynCPP --help
