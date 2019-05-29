@@ -130,7 +130,7 @@ set_target_properties(libminisyncpp_shared PROPERTIES ${LIB_PROPERTIES})
 if (LIBMINISYNCPP_WITH_PYTHON)
     pybind11_add_module(pyminisyncpp
             MODULE
-            ${CMAKE_CURRENT_SOURCE_DIR}/src/libminisyncpp/pyminisyncpp_gen.cpp
+            src/python_bindings/pyminisyncpp_gen.cpp
             ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h)
     set_target_properties(pyminisyncpp PROPERTIES
             # LINK_SEARCH_START_STATIC 1
