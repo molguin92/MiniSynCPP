@@ -24,7 +24,6 @@ The requirements for native compilation are:
 An easy way to install all necessary dependencies on Ubuntu is:
 ```bash
 $ sudo apt install build-essential cmake gcc g++ clang \
-    python3.7-dev python3.7 libpython3.7 libpython3.7-dev \
     python3-all python3-all-dev libpython3-all-dev \
     python3-setuptools python3-distutils python3-distutils-extra
 ```
