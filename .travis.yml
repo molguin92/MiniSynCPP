@@ -11,12 +11,7 @@ before_install:
   - sudo apt-get install -y python3-dev
   - mkdir ./cmake_build
   - cd ./cmake_build
-  - |
-  cmake \
-  -DCMAKE_BUILD_TYPE=DEBUG \
-  -DLIBMINISYNCPP_BUILD_TESTS=TRUE \
-  -DLIBMINISYNCPP_BUILD_DEMO=TRUE \
-  -DLIBMINISYNCPP_WITH_PYTHON=TRUE ..
+  - cmake -DCMAKE_BUILD_TYPE=DEBUG -DLIBMINISYNCPP_BUILD_TESTS=TRUE -DLIBMINISYNCPP_BUILD_DEMO=TRUE -DLIBMINISYNCPP_WITH_PYTHON=TRUE ..
 
 script:
   - cmake --build . --target all -- -j 4
