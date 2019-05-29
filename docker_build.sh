@@ -2,7 +2,7 @@
 
 printf "Building libminisyncpp in a Docker container...\n"
 
-DOCKER_IMG="minisync_build:v2.5.4"
+DOCKER_IMG="minisync_build:v2.5.5"
 
 printf "Checking if build image exists in registry: "
 if [[ "$(docker images -q ${DOCKER_IMG} 2> /dev/null)" == "" ]]; then
@@ -20,14 +20,13 @@ RUN apt-get upgrade -y
 RUN apt-get install -y wget git curl tar
 
 # first get the Raspberry Pi cross-compilers
-# done is this order because it speeds up future image builds
+# done in this order because it speeds up future image builds
 COPY ./install_raspi_xcompiler.sh /tmp/
 RUN /tmp/install_raspi_xcompiler.sh
 
 # install build deps
 RUN apt-get install -y build-essential cmake gcc g++ clang \
-    python3-all python3-all-dev libpython3-all-dev python3-setuptools python3-distutils \
-    python3-distutils-extra
+    python3-all python3-all-dev libpython3-all-dev python3-setuptools
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.7 1
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python2.7 2
 RUN update-alternatives --set python /usr/bin/python3.7
