@@ -1,0 +1,13 @@
+## Mirrorlist for apt, for better performance when building docker image.
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic main restricted
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic-updates main restricted
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic universe
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic-updates universe
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic multiverse
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic-updates multiverse
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic-backports main restricted universe multiverse
+deb http://archive.canonical.com/ubuntu cosmic partner
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic-security main restricted
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic-security universe
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic-security multiverse
+deb mirror://mirrors.ubuntu.com/mirrors.txt cosmic-proposed multiverse main restricted universe

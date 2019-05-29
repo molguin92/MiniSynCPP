@@ -10,8 +10,8 @@ The easiest way to compile the project is by invoking the `docker_build.sh` scri
 configured 
 build environment inside a Docker container based on Ubuntu 18.04 and uses it to build:
 
-- Native x86_64 binaries and libraries for Linux.
-- Native ARMv7 binaries and libraries intended for the Raspberry Pi 2/3/3 A/B+.
+- Native x86_64 binaries, C++ and Python 3.6+ libraries for Linux.
+- Native ARMv7 binaries and C++ libraries intended for the Raspberry Pi 2/3/3 A/B+.
 *The cross-compilers used for this can be found [here.](https://github.com/abhiTronix/raspberry-pi-cross-compilers)*
 
 ### Native
@@ -19,6 +19,15 @@ The requirements for native compilation are:
 
 - CMAKE
 - C++11 Compiler (gcc, g++, clang).
+- Python 3.6+, along with the associated development headers.
+
+An easy way to install all necessary dependencies on Ubuntu is:
+```bash
+$ sudo apt install build-essential cmake gcc g++ clang \
+    python3.7-dev python3.7 libpython3.7 libpython3.7-dev \
+    python3-all python3-all-dev libpython3-all-dev \
+    python3-setuptools python3-distutils python3-distutils-extra
+```
 
 Compilation is then just a matter of running:
 ```bash
@@ -36,7 +45,8 @@ $> tests/minisyncpp # run some tests
 the library.
 - `-DLIBMINISYNCPP_BUILD_TESTS={TRUE/FALSE}`: Build unittests.
 - `-DLIBMINISYNCPP_ENABLE_LOGURU={TRUE/FALSE}`: For library-only builds, whether to build with Loguru logging support.
-- `-DLIBMINISYNCPP_WITH_PYTHON={TRUE/FALSE}`: Build Python 3.7+ library.
+- `-DLIBMINISYNCPP_WITH_PYTHON={TRUE/FALSE}`: Build Python 3.6+ library. Requires Python 3.6+ with the development 
+headers. On Ubuntu, these can be installed with `sudo apt install python3.7 python3.7-dev`.
 
 Note: Even though the project uses the Google Protobuf libraries, it is not necessary to have these installed when 
 compiling, as the build chain will download its own copy anyway to statically link them. This is mainly done for 

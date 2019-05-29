@@ -2,14 +2,37 @@
 
 printf "Building libminisyncpp in a Docker container...\n"
 
-DOCKER_IMG="minisync_build:v2.4"
+DOCKER_IMG="minisync_build:v2.5.3"
 
 printf "Checking if build image exists in registry: "
 if [[ "$(docker images -q ${DOCKER_IMG} 2> /dev/null)" == "" ]]; then
     # check if image exists. If it doesn't, build it.
     printf "not found.\n"
     printf "Building required Docker image:\n"
-    docker build . --tag=${DOCKER_IMG}
+    docker build --tag=${DOCKER_IMG} . -f-<<EOF
+FROM ubuntu:18.10
+LABEL maintainer="Manuel Olguín <molguin@kth.se>"
+
+# install requirements
+COPY ./sources.list /etc/apt/sources.list
+RUN apt-get update
+RUN apt-get upgrade -y
+RUN apt-get install -y wget git curl tar
+
+# first get the Raspberry Pi cross-compilers
+# done is this order because it speeds up future image builds
+COPY ./install_raspi_xcompiler.sh /tmp/
+RUN /tmp/install_raspi_xcompiler.sh
+
+# install build deps
+RUN apt-get install -y build-essential cmake gcc g++ clang python3.7-dev python3.7 libpython3.7 libpython3.7-dev \
+    python3-all python3-all-dev libpython3-all-dev python3-setuptools python3-distutils \
+    python3-distutils-extra
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.7 1
+RUN update-alternatives --install /usr/bin/python python /usr/bin/python2.7 2
+RUN update-alternatives --set python /usr/bin/python3.7
+EOF
+
 else
     printf "found.\n"
 fi
@@ -35,7 +58,7 @@ docker run --name=build_x86_64 --rm -v ${PWD}:/mnt/build ${DOCKER_IMG} /bin/bash
 cd /mnt/build;\
 mkdir -p ${LINUX_BUILD_DIR};\
 cd ${LINUX_BUILD_DIR};\
-cmake ${COMMON_CMAKE_FLAGS} .. &&\
+cmake ${COMMON_CMAKE_FLAGS} -DLIBMINISYNCPP_WITH_PYTHON=TRUE .. &&\
 cmake --build . --target clean -- -j 4;\
 cmake --build . --target all -- -j 4;\
 ./tests/minisyncpp;\
