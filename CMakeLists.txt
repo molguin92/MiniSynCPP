@@ -84,6 +84,9 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/libminisyncpp/lib_config.h.in
 configure_file(${CMAKE_CURRENT_SOURCE_DIR}/src/libminisyncpp/minisync_api.h
         ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h
         COPYONLY)
+# export a global variables for easy use
+set(LIBMINISYNCPP_HDR ${CMAKE_CURRENT_BINARY_DIR}/include/minisync_api.h CACHE INTERNAL "libminisyncpp header")
+set(LIBMINISYNCPP_INCLUDE ${CMAKE_CURRENT_BINARY_DIR}/include/ CACHE INTERNAL "libminisyncpp include dir")
 
 ## add library for just the algorithm
 list(APPEND LIB_SRC
