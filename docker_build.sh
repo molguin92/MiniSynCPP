@@ -2,7 +2,7 @@
 
 printf "Building libminisyncpp in a Docker container...\n"
 
-DOCKER_IMG="minisync_build:v2.5.3"
+DOCKER_IMG="minisync_build:v2.5.4"
 
 printf "Checking if build image exists in registry: "
 if [[ "$(docker images -q ${DOCKER_IMG} 2> /dev/null)" == "" ]]; then
@@ -25,7 +25,7 @@ COPY ./install_raspi_xcompiler.sh /tmp/
 RUN /tmp/install_raspi_xcompiler.sh
 
 # install build deps
-RUN apt-get install -y build-essential cmake gcc g++ clang python3.7-dev python3.7 libpython3.7 libpython3.7-dev \
+RUN apt-get install -y build-essential cmake gcc g++ clang \
     python3-all python3-all-dev libpython3-all-dev python3-setuptools python3-distutils \
     python3-distutils-extra
 RUN update-alternatives --install /usr/bin/python python /usr/bin/python3.7 1

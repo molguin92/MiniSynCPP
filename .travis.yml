@@ -8,7 +8,7 @@ dist: xenial
 
 before_install:
   - sudo apt-get update
-  - sudo apt-get install -y python3-dev
+  - sudo apt-get install -y python3-all python3-all-dev libpython3-all-dev python3-setuptools python3-distutils python3-distutils-extra
   - mkdir ./cmake_build
   - cd ./cmake_build
   - cmake -DCMAKE_BUILD_TYPE=DEBUG -DLIBMINISYNCPP_BUILD_TESTS=TRUE -DLIBMINISYNCPP_BUILD_DEMO=TRUE -DLIBMINISYNCPP_WITH_PYTHON=TRUE ..
